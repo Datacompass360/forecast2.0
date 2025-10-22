@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DataCompass 360</title>
     
+    <!-- Favicon Placeholder -->
+    <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
+
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -1106,10 +1109,95 @@
             onValue(predictionsRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    allMatchesData = Object.keys(data).map(key => ({
-                        id: key,
-                        ...data[key]
-                    }));
+                    allMatchesData = Object.keys(data).map(key => {
+                        const matchData = data[key];
+                        
+                        // --- PARSING ---
+                        let successVal;
+                        if (matchData.Success === "true" || matchData.Success === true) successVal = true;
+                        else if (matchData.Success === "false" || matchData.Success === false) successVal = false;
+                        else successVal = undefined; // For "Pending"
+
+                        let dateVal = 'N/A';
+                        if (matchData.scrapedTimestamp) {
+                            dateVal = matchData.scrapedTimestamp.split('T')[0];
+                        } else if (matchData.MatchKey) {
+                            dateVal = matchData.MatchKey.split('|')[0]; // Fallback
+                        }
+
+                        let resultVal = matchData.Result || 'N/A';
+                        let homeScore = 'N/A', awayScore = 'N/A';
+                        if (resultVal && resultVal.includes('-')) {
+                            const scores = resultVal.split('-');
+                            homeScore = scores[0].trim();
+                            awayScore = scores[1].trim();
+                        }
+                        
+                        // --- MAPPING ---
+                        // Map Firebase keys (e.g., "Home Team") to app keys (e.g., "homeTeam")
+                        return {
+                            id: key,
+                            
+                            // 1. Keys for Main Table, Filters, Stats
+                            date: dateVal,
+                            league: matchData.League || 'N/A',
+                            homeTeam: matchData["Home Team"] || 'N/A',
+                            awayTeam: matchData["Away Team"] || 'N/A',
+                            homeOdds: matchData["Home Odds"] || 'N/A',
+                            drawOdds: matchData["Draw Odds"] || 'N/A',
+                            awayOdds: matchData["Away Odds"] || 'N/A',
+                            confidence: parseFloat(matchData.Confidence) || 0,
+                            analyzedPrediction: matchData.Prediction || 'N/A',
+                            result: resultVal,
+                            success: successVal,
+                            homePower: parseFloat(matchData["Home Team Power"]) || null,
+                            awayPower: parseFloat(matchData["Away Team Power"]) || null,
+
+                            // 2. Keys for Details Modal (must match 'metrics' array in openMatchDetailsModal)
+                            homeScore: homeScore,
+                            awayScore: awayScore,
+                            // Map special keys the modal expects
+                            Form: matchData["Home Form"] || 'N/A',
+                            HTeam_Form: matchData["Home Form"] || 'N/A',
+                            ATeam_Form: matchData["Away Form"] || 'N/A',
+                            FormRate: matchData["Home Form Rate"] || 'N/A',
+                            HTeam_FormRate: matchData["Home Form Rate"] || 'N/A',
+                            ATeam_FormRate: matchData["Away Form Rate"] || 'N/A',
+                            Confidence: parseFloat(matchData.Confidence) || 0,
+                            Prediction: matchData.Prediction || 'N/A',
+                            CorrectScore: matchData["Correct Score"] || 'N/A',
+                            TableStanding: matchData["Home Team Table Standing"] || 'N/A',
+                            HTeam_TableStanding: matchData["Home Team Table Standing"] || 'N/A',
+                            ATeam_TableStanding: matchData["Away Team Table Standing"] || 'N/A',
+                            Last5OverallWins: matchData["L5 H-Team Overall W"] || 'N/A',
+                            HTeam_Last5OverallWins: matchData["L5 H-Team Overall W"] || 'N/A',
+                            ATeam_Last5OverallWins: matchData["L5 A-Team Overall W"] || 'N/A',
+                            Last5HomeWins: matchData["L5 H-Team Home W"] || 'N/A',
+                            Last5AwayWins: matchData["L5 A-Team Away W"] || 'N/A',
+                            AvgScored: matchData["Hteam Avg Scored"] || 'N/A',
+                            HTeam_AvgScored: matchData["Hteam Avg Scored"] || 'N/A',
+                            ATeam_AvgScored: matchData["Ateam Avg Scored"] || 'N/A',
+                            AvgConceded: matchData["Hteam Avg Conceded"] || 'N/A',
+                            HTeam_AvgConceded: matchData["Hteam Avg Conceded"] || 'N/A',
+                            ATeam_AvgConceded: matchData["Ateam Avg Conceded"] || 'N/A',
+                            PowerOver25: matchData["HTeam Power - Over 2.5"] || 'N/A',
+                            HTeam_PowerOver25: matchData["HTeam Power - Over 2.5"] || 'N/A',
+                            ATeam_PowerOver25: matchData["ATeam Power - Over 2.5"] || 'N/A',
+                            PowerBTTS: matchData["HTeam Power - BTTS"] || 'N/A',
+                            HTeam_PowerBTTS: matchData["HTeam Power - BTTS"] || 'N/A',
+                            ATeam_PowerBTTS: matchData["ATeam Power - BTTS"] || 'N/A',
+
+                            // 3. Keys for 'More Filters' Modal
+                            HTeam_OV15: parseFloat(matchData["HTeam % - OV1.5"]) || null,
+                            ATeam_OV15: parseFloat(matchData["ATeam % - OV1.5"]) || null,
+                            HTeam_OV25: parseFloat(matchData["HTeam % - OV2.5"]) || null,
+                            ATeam_OV25: parseFloat(matchData["ATeam % - OV2.5"]) || null,
+                            HTeam_OV35: parseFloat(matchData["HTeam % - OV3.5"]) || null,
+                            ATeam_OV35: parseFloat(matchData["ATeam % - OV3.5"]) || null,
+                            ATeam_Power_Over25: parseFloat(matchData["ATeam Power - Over 2.5"]) || null,
+                            ATeam_Power_BTTS: parseFloat(matchData["ATeam Power - BTTS"]) || null,
+                        };
+                    });
                     
                     // Sort by date, newest first
                     allMatchesData.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1853,3 +1941,5 @@
 
 </body>
 </html>
+
+
