@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataCompass 360</title>
+    
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Chart.js for Statistics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- 3. Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- 4. Custom Tailwind Configuration & Styles -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'navy': '#001f3f',
+                        'emerald': '#00A86B',
+                        'gold': '#FFD700',
+                    },
+                    fontFamily: {
+                        'sans': ['Poppins', 'sans-serif'], // For headings
+                        'body': ['Roboto', 'sans-serif'],   // For body text
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00A86B; /* Emerald */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #007a4e; /* Darker Emerald */
+        }
+        /* Pulse animation for logo */
+        @keyframes pulse-compass {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 12px rgba(255, 215, 0, 0);
+            }
+        }
+        .pulse-compass-animation {
+            animation: pulse-compass 2s infinite;
+            border-radius: 50%;
+        }
+        /* Style for active nav tab */
+        .nav-tab-button.active {
+            background-color: #00A86B; /* Emerald */
+            color: white;
+            font-weight: 600;
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- =================================================================== -->
+    <!-- LOADING SPINNER                                                     -->
+    <!-- =================================================================== -->
+    <div id="loading-spinner" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div class="h-16 w-16 animate-spin rounded-full border-4 border-t-emerald border-gray-200"></div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- LOGIN PAGE                                                          -->
+    <!-- =================================================================== -->
+    <div id="login-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-t from-navy to-gray-100 p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+            <!-- Logo -->
+            <div class="flex justify-center mb-6">
+                <div class="p-3 rounded-full bg-navy">
+                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                        <!-- Gold Accent -->
+                        <polygon points="12 4 14 8 12 10 10 8" class="text-gold" fill="currentColor"></polygon>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="text-center text-3xl font-bold text-navy mb-6">DataCompass 360</h2>
+            
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="login-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="you@example.com">
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="login-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="••••••••">
+                </div>
+                
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <input id="remember-me" type="checkbox" class="h-4 w-4 text-emerald rounded border-gray-300 focus:ring-emerald">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-900">Remember me</label>
+                    </div>
+                    <a href="#" id="forgot-password-link" class="text-sm font-medium text-emerald hover:text-navy">Forgot password?</a>
+                </div>
+                
+                <button type="submit" id="login-button" class="w-full bg-emerald text-white py-2.5 rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition duration-300">
+                    Login
+                </button>
+                
+                <p id="login-error" class="text-red-500 text-sm mt-4 text-center"></p>
+                
+                <p class="text-center text-sm text-gray-600 mt-6">
+                    Don't have an account? 
+                    <a href="#" id="show-signup-link" class="font-medium text-emerald hover:text-navy">Sign up</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- SIGNUP PAGE                                                         -->
+    <!-- =================================================================== -->
+    <div id="signup-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-t from-navy to-gray-100 p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+            <h2 class="text-center text-3xl font-bold text-navy mb-6">Create Account</h2>
+            
+            <form id="signup-form">
+                <div class="mb-4">
+                    <label for="signup-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="signup-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="John Doe">
+                </div>
+                <div class="mb-4">
+                    <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="signup-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="you@example.com">
+                </div>
+                <div class="mb-4">
+                    <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="signup-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="Min. 6 characters">
+                </div>
+                <div class="mb-6">
+                    <label for="signup-country" class="block text-sm font-medium text-gray-700 mb-1">Country (Optional)</label>
+                    <input type="text" id="signup-country" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald focus:border-transparent" placeholder="United States">
+                </div>
+                
+                <button type="submit" id="signup-button" class="w-full bg-emerald text-white py-2.5 rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition duration-300">
+                    Create Account
+                </button>
+                
+                <p id="signup-error" class="text-red-500 text-sm mt-4 text-center"></p>
+
+                <p class="text-center text-sm text-gray-600 mt-6">
+                    Already have an account? 
+                    <a href="#" id="show-login-link" class="font-medium text-emerald hover:text-navy">Login</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- DASHBOARD PAGE                                                      -->
+    <!-- =================================================================== -->
+    <div id="dashboard-page" class="hidden h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-navy text-white shadow-lg flex items-center justify-between px-6 py-3 z-10">
+            <div class="flex items-center space-x-3">
+                <!-- Logo with Pulse -->
+                <div class="p-2 rounded-full bg-white pulse-compass-animation">
+                    <svg class="w-8 h-8 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                        <polygon points="12 4 14 8 12 10 10 8" class="text-gold" fill="currentColor"></polygon>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold">DataCompass 360</h1>
+            </div>
+            
+            <!-- Global Search -->
+            <div class="relative w-full max-w-lg">
+                <input type="search" id="global-search" class="w-full bg-white/20 text-white placeholder-gray-300 rounded-full py-2 px-5 pl-12 focus:outline-none focus:ring-2 focus:ring-gold" placeholder="Search by team, league, or date...">
+                <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- User Menu -->
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <div class="text-sm text-gray-300">Welcome,</div>
+                    <div id="user-email" class="font-medium">user@example.com</div>
+                </div>
+                <button id="logout-button" class="bg-emerald text-white rounded-full p-2.5 hover:bg-opacity-90 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Navigation Sidebar -->
+            <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2">
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="all-matches">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 16h.01" /></svg>
+                    <span>🏆 All Matches</span>
+                </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="selections">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                    <span>📋 Selections</span>
+                </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="high-chance">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343m11.314 11.314a8 8 0 01-11.314-11.314m11.314 11.314L22 22M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-4.364l-.707.707M6.343 17.657l-.707.707m12.02-12.02l-.707-.707M6.343 6.343l-.707-.707" /></svg>
+                    <span>🔥 High Chance</span>
+                </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="statistics">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                    <span>📊 Statistics</span>
+                </button>
+                <button id="admin-nav-button" class="hidden nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="admin">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <span>👑 Admin</span>
+                </button>
+            </nav>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
+                <!-- 
+                  =======================
+                  TAB: All Matches
+                  ======================= 
+                -->
+                <div id="all-matches-tab" class="tab-content">
+                    <h1 class="text-3xl font-bold text-navy mb-6">All Matches</h1>
+                    
+                    <!-- Main Filters -->
+                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            <!-- League -->
+                            <div>
+                                <label for="filter-league" class="block text-sm font-medium text-gray-700">League</label>
+                                <select id="filter-league" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                                    <option value="">All Leagues</option>
+                                    <!-- Options populated by JS -->
+                                </select>
+                            </div>
+                            <!-- Confidence % -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Confidence %</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-conf-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-conf-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
+                            </div>
+                            <!-- Home Team Power -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Home Power</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-home-power-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-home-power-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
+                            </div>
+                            <!-- Away Team Power -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Away Power</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-away-power-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-away-power-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
+                            </div>
+                            <!-- Analyzed Prediction -->
+                            <div>
+                                <label for="filter-prediction" class="block text-sm font-medium text-gray-700">Prediction</label>
+                                <input type="text" id="filter-prediction" placeholder="e.g., Home Win" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-end space-x-3 mt-4">
+                            <button id="more-filters-button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">
+                                More Filters
+                            </button>
+                            <button id="reset-all-filters-main" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium">
+                                Reset
+                            </button>
+                            <button id="apply-filters-main" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Match Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Odds (H/D/A)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="matches-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Rows populated by JS -->
+                                    <!-- Example Row:
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald"></td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">2025-10-21</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">EPL</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Arsenal</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Chelsea</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">1.8 / 3.5 / 4.0</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-emerald">74%</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">Home Win</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">2-1</td>
+                                        <td class="px-4 py-4 whitespace-nowrap"><span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span></td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-emerald hover:text-navy view-details-btn" data-match-id="match_001">View</button>
+                                        </td>
+                                    </tr>
+                                    -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Pagination -->
+                        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 sm:px-6">
+                            <div class="text-sm text-gray-700">
+                                Showing <span id="page-info-start">1</span> to <span id="page-info-end">30</span> of <span id="page-info-total">0</span> results
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="prev-page" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                                    Previous
+                                </button>
+                                <button id="next-page" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Selections
+                  ======================= 
+                -->
+                <div id="selections-tab" class="tab-content hidden">
+                    <h1 class="text-3xl font-bold text-navy mb-6">My Selections</h1>
+                    
+                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex-grow flex items-center space-x-3">
+                            <input type="text" id="collection-name" placeholder="Name your collection..." class="w-full max-w-xs rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <button id="save-collection-btn" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 font-medium">Save Collection</button>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="export-csv-btn" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-medium flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span>CSV</span>
+                            </button>
+                            <button id="export-pdf-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span>PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Selections Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <!-- Columns similar to All Matches, but with Delete/Pin -->
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="selections-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: High Chance
+                  ======================= 
+                -->
+                <div id="high-chance-tab" class="tab-content hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h1 class="text-3xl font-bold text-navy">High Chance Matches (≥ 65% Confidence)</h1>
+                        <button id="notify-me-btn" class="px-5 py-2.5 bg-gold text-navy rounded-lg hover:bg-opacity-90 font-semibold shadow-md flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341A6.002 6.002 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                            <span>Notify Me</span>
+                        </button>
+                    </div>
+
+                    <!-- High Chance Table (re-uses logic, just filtered data) -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gold">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="high-chance-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Statistics
+                  ======================= 
+                -->
+                <div id="statistics-tab" class="tab-content hidden">
+                    <h1 class="text-3xl font-bold text-navy mb-6">System Statistics</h1>
+
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Total Matches</div>
+                                <div id="stats-total-matches" class="text-3xl font-bold text-navy">0</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
+                            <div class="p-3 rounded-full bg-emerald text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Overall Accuracy</div>
+                                <div id="stats-accuracy" class="text-3xl font-bold text-emerald">0%</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
+                            <div class="p-3 rounded-full bg-gold text-navy">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Top League</div>
+                                <div id="stats-top-league" class="text-2xl font-bold text-navy">N/A</div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.08-1.285-.237-1.887M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.08-1.285.237-1.887m0 0A5.002 5.002 0 0112 13a5 5 0 014.763 3.113M12 13v-1a3 3 0 10-6 0v1m6 0v-1a3 3 0 10-6 0v1m6 0A5.002 5.002 0 0112 13m0 0v-1a3 3 0 10-6 0v1m0 0A5.002 5.002 0 0112 13m0-3a3 3 0 100-6 3 3 0 000 6z" /></svg>
+                            </div>
+                            <div>
+                                <div class="text-sm text-gray-500">Top Team</div>
+                                <div id="stats-top-team" class="text-2xl font-bold text-navy">N/A</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Pie Chart: Distribution -->
+                        <div class="lg:col-span-1 bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4">Prediction Distribution</h3>
+                            <canvas id="distribution-chart"></canvas>
+                        </div>
+                        <!-- Bar Chart: Performance by League -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4">Accuracy by League</h3>
+                            <canvas id="league-chart"></canvas>
+                        </div>
+                        <!-- Line Chart: Accuracy Over Time -->
+                        <div class="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4">Accuracy Over Time</h3>
+                            <canvas id="accuracy-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Admin
+                  ======================= 
+                -->
+                <div id="admin-tab" class="tab-content hidden">
+                    <h1 class="text-3xl font-bold text-navy mb-6">Admin Dashboard</h1>
+                    
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <h3 class="text-xl font-semibold text-navy">User Management</h3>
+                            <p class="text-gray-600 mt-1">Create, edit, or deactivate users and manage their roles.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Admin users list populated by JS -->
+                                    <!-- Example Row:
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-gray-900">admin@example.com</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <select class="rounded-lg border-gray-300">
+                                                <option selected>Admin</option>
+                                                <option>Analyst</option>
+                                                <option>Standard User</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Active
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-emerald hover:text-navy">Save</button>
+                                            <button class="text-red-600 hover:text-red-900 ml-4">Deactivate</button>
+                                        </td>
+                                    </tr>
+                                    -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- MODALS                                                              -->
+    <!-- =================================================================== -->
+
+    <!-- More Filters Modal -->
+    <div id="more-filters-modal" class="hidden fixed inset-0 z-30 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all" role="dialog" aria-modal="true">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-2xl font-semibold text-navy">Additional Filters</h3>
+                <button id="close-more-filters-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                    <!-- HTeam % - OV1.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV1.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-h-ov15-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-ov15-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- ATeam % - OV1.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV1.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-ov15-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-ov15-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- HTeam % - OV2.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV2.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-h-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- ATeam % - OV2.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV2.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- HTeam % - OV3.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV3.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-h-ov35-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-ov35-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- ATeam % - OV3.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV3.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-ov35-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-ov35-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    
+                    <!-- ATeam Power - Over 2.5 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ATeam Power – Over 2.5</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-power-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-power-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- ATeam Power - BTTS -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ATeam Power – BTTS</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-power-btts-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-power-btts-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                <button id="reset-modal-filters" class="px-5 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium">Reset</button>
+                <button id="apply-modal-filters" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Details Modal -->
+    <div id="match-details-modal" class="hidden fixed inset-0 z-40 bg-black bg-opacity-60 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] transform transition-all flex flex-col" role="dialog" aria-modal="true">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+                <h3 id="modal-match-title" class="text-2xl font-semibold text-navy">Match Details</h3>
+                <button id="close-match-details-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Team Comparison -->
+                    <div class="md:col-span-2">
+                        <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Metric</th>
+                                    <th id="modal-home-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700">Home Team</th>
+                                    <th id="modal-away-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700">Away Team</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-comparison-table" class="bg-white divide-y divide-gray-200">
+                                <!-- Data rows populated by JS -->
+                                <!-- Example:
+                                <tr>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-800">Final Score</td>
+                                    <td class="px-4 py-3 text-center text-sm font-bold text-lg text-navy">2</td>
+                                    <td class="px-4 py-3 text-center text-sm font-bold text-lg text-navy">1</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-800">Form</td>
+                                    <td class="px-4 py-3 text-center text-sm text-gray-600">W-W-L-D-W</td>
+                                    <td class="px-4 py-3 text-center text-sm text-gray-600">L-W-W-D-L</td>
+                                </tr>
+                                -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Gauges & Graphs -->
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 rounded-lg p-4 text-center">
+                            <h4 class="text-lg font-semibold text-navy mb-2">Prediction Confidence</h4>
+                            <div class="w-48 h-48 mx-auto">
+                                <canvas id="modal-confidence-gauge"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="text-lg font-semibold text-navy mb-2 text-center">Team Performance Trend</h4>
+                            <div class="h-40">
+                                <canvas id="modal-team-trend-graph"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- JAVASCRIPT                                                          -->
+    <!-- =================================================================== -->
+    <script type="module">
+        // -------------------------------------------
+        // Firebase SDK Imports
+        // -------------------------------------------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut,
+            setPersistence,
+            browserLocalPersistence,
+            browserSessionPersistence
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getDatabase, 
+            ref, 
+            onValue,
+            get,
+            set
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        // -------------------------------------------
+        // Firebase Config & Initialization
+        // -------------------------------------------
+
+        // Fallback config from your prompt, in case __firebase_config is not injected
+        const fallbackConfig = {
+            apiKey: "AIzaSyB7P5UCzyp5dnMO0E81PQwp5esUDNFCKzg",
+            authDomain: "datacompass360-3b5d9.firebaseapp.com",
+            databaseURL: "https://datacompass360-3b5d9-default-rtdb.firebaseio.com",
+            projectId: "datacompass360-3b5d9",
+            storageBucket: "datacompass360-3b5d9.firebasestorage.app",
+            messagingSenderId: "836940314719",
+            appId: "1:836940314719:web:7088bbdf2a6c446dddc3ea",
+            measurementId: "G-PSE21XN3KL"
+        };
+        
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' 
+            ? __firebase_config 
+            : JSON.stringify(fallbackConfig);
+        
+        const firebaseConfig = JSON.parse(firebaseConfigString);
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // -------------------------------------------
+        // Global State
+        // -------------------------------------------
+        let allMatchesData = [];    // Raw data from Firebase
+        let filteredMatches = [];   // Data after all filters
+        let selections = [];      // Array of selected match IDs
+        let currentUser = null;
+        let currentUserRole = 'Standard User'; // Default role
+        let currentPage = 1;
+        const rowsPerPage = 30;
+        let activeTab = 'all-matches';
+        
+        // Chart instances
+        let charts = {
+            distribution: null,
+            league: null,
+            accuracy: null,
+            modalGauge: null,
+            modalTrend: null
+        };
+
+        // DOM Element Cache
+        const dom = {
+            loadingSpinner: document.getElementById('loading-spinner'),
+            loginPage: document.getElementById('login-page'),
+            signupPage: document.getElementById('signup-page'),
+            dashboardPage: document.getElementById('dashboard-page'),
+            loginForm: document.getElementById('login-form'),
+            loginEmail: document.getElementById('login-email'),
+            loginPassword: document.getElementById('login-password'),
+            loginError: document.getElementById('login-error'),
+            rememberMe: document.getElementById('remember-me'),
+            signupForm: document.getElementById('signup-form'),
+            signupName: document.getElementById('signup-name'),
+            signupEmail: document.getElementById('signup-email'),
+            signupPassword: document.getElementById('signup-password'),
+            signupCountry: document.getElementById('signup-country'),
+            signupError: document.getElementById('signup-error'),
+            showSignupLink: document.getElementById('show-signup-link'),
+            showLoginLink: document.getElementById('show-login-link'),
+            logoutButton: document.getElementById('logout-button'),
+            userEmailDisplay: document.getElementById('user-email'),
+            adminNavButton: document.getElementById('admin-nav-button'),
+            navTabButtons: document.querySelectorAll('.nav-tab-button'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            matchesTableBody: document.getElementById('matches-table-body'),
+            highChanceTableBody: document.getElementById('high-chance-table-body'),
+            selectionsTableBody: document.getElementById('selections-table-body'),
+            usersTableBody: document.getElementById('users-table-body'),
+            pagination: {
+                prev: document.getElementById('prev-page'),
+                next: document.getElementById('next-page'),
+                start: document.getElementById('page-info-start'),
+                end: document.getElementById('page-info-end'),
+                total: document.getElementById('page-info-total'),
+            },
+            filters: {
+                league: document.getElementById('filter-league'),
+                confMin: document.getElementById('filter-conf-min'),
+                confMax: document.getElementById('filter-conf-max'),
+                homePowerMin: document.getElementById('filter-home-power-min'),
+                homePowerMax: document.getElementById('filter-home-power-max'),
+                awayPowerMin: document.getElementById('filter-away-power-min'),
+                awayPowerMax: document.getElementById('filter-away-power-max'),
+                prediction: document.getElementById('filter-prediction'),
+                hOv15Min: document.getElementById('filter-h-ov15-min'),
+                hOv15Max: document.getElementById('filter-h-ov15-max'),
+                aOv15Min: document.getElementById('filter-a-ov15-min'),
+                aOv15Max: document.getElementById('filter-a-ov15-max'),
+                hOv25Min: document.getElementById('filter-h-ov25-min'),
+                hOv25Max: document.getElementById('filter-h-ov25-max'),
+                aOv25Min: document.getElementById('filter-a-ov25-min'),
+                aOv25Max: document.getElementById('filter-a-ov25-max'),
+                hOv35Min: document.getElementById('filter-h-ov35-min'),
+                hOv35Max: document.getElementById('filter-h-ov35-max'),
+                aOv35Min: document.getElementById('filter-a-ov35-min'),
+                aOv35Max: document.getElementById('filter-a-ov35-max'),
+                aPowerOv25Min: document.getElementById('filter-a-power-ov25-min'),
+                aPowerOv25Max: document.getElementById('filter-a-power-ov25-max'),
+                aPowerBttsMin: document.getElementById('filter-a-power-btts-min'),
+                aPowerBttsMax: document.getElementById('filter-a-power-btts-max'),
+                globalSearch: document.getElementById('global-search'),
+            },
+            filterButtons: {
+                moreFilters: document.getElementById('more-filters-button'),
+                closeMoreFilters: document.getElementById('close-more-filters-modal'),
+                applyMain: document.getElementById('apply-filters-main'),
+                resetMain: document.getElementById('reset-all-filters-main'),
+                applyModal: document.getElementById('apply-modal-filters'),
+                resetModal: document.getElementById('reset-modal-filters'),
+            },
+            modals: {
+                moreFilters: document.getElementById('more-filters-modal'),
+                matchDetails: document.getElementById('match-details-modal'),
+                closeMatchDetails: document.getElementById('close-match-details-modal'),
+                matchTitle: document.getElementById('modal-match-title'),
+                homeTeam: document.getElementById('modal-home-team'),
+                awayTeam: document.getElementById('modal-away-team'),
+                comparisonTable: document.getElementById('modal-comparison-table'),
+            },
+            stats: {
+                totalMatches: document.getElementById('stats-total-matches'),
+                accuracy: document.getElementById('stats-accuracy'),
+                topLeague: document.getElementById('stats-top-league'),
+                topTeam: document.getElementById('stats-top-team'),
+            },
+            charts: {
+                distribution: document.getElementById('distribution-chart')?.getContext('2d'),
+                league: document.getElementById('league-chart')?.getContext('2d'),
+                accuracy: document.getElementById('accuracy-chart')?.getContext('2d'),
+                modalGauge: document.getElementById('modal-confidence-gauge')?.getContext('2d'),
+                modalTrend: document.getElementById('modal-team-trend-graph')?.getContext('2d'),
+            },
+            selections: {
+                exportCsv: document.getElementById('export-csv-btn'),
+                exportPdf: document.getElementById('export-pdf-btn'),
+            }
+        };
+
+        // -------------------------------------------
+        // AUTHENTICATION
+        // -------------------------------------------
+
+        // Listen for auth state changes
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                dom.userEmailDisplay.textContent = user.email;
+                
+                // Fetch user role
+                try {
+                    const userRef = ref(db, 'users/' + user.uid);
+                    const snapshot = await get(userRef);
+                    if (snapshot.exists()) {
+                        currentUserRole = snapshot.val().role || 'Standard User';
+                    } else {
+                        // This might be a new user, role not set yet
+                        currentUserRole = 'Standard User';
+                    }
+                } catch (error) {
+                    console.error("Error fetching user role:", error);
+                    currentUserRole = 'Standard User';
+                }
+                
+                setupUIForRole(currentUserRole);
+                showPage('dashboard');
+                fetchMatchData(); // Fetch data only after login
+            } else {
+                currentUser = null;
+                showPage('login');
+            }
+            dom.loadingSpinner.classList.add('hidden');
+        });
+
+        // Login Form Submission
+        dom.loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            dom.loginError.textContent = '';
+            const email = dom.loginEmail.value;
+            const password = dom.loginPassword.value;
+            const persistence = dom.rememberMe.checked ? browserLocalPersistence : browserSessionPersistence;
+
+            setPersistence(auth, persistence)
+                .then(() => {
+                    return signInWithEmailAndPassword(auth, email, password);
+                })
+                .then((userCredential) => {
+                    // Success, onAuthStateChanged will handle the rest
+                })
+                .catch((error) => {
+                    dom.loginError.textContent = getFriendlyAuthError(error.code);
+                });
+        });
+
+        // Signup Form Submission
+        dom.signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            dom.signupError.textContent = '';
+            const name = dom.signupName.value;
+            const email = dom.signupEmail.value;
+            const password = dom.signupPassword.value;
+            const country = dom.signupCountry.value;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    // Signed in 
+                    const user = userCredential.user;
+                    
+                    // Now, save user info to Realtime Database
+                    const userRef = ref(db, 'users/' + user.uid);
+                    set(userRef, {
+                        fullName: name,
+                        email: email,
+                        country: country,
+                        role: 'Standard User', // Default role
+                        status: 'Pending', // Or 'Active' if no approval needed
+                        createdAt: new Date().toISOString()
+                    }).then(() => {
+                        // Success, onAuthStateChanged will handle UI switch
+                    }).catch((dbError) => {
+                        console.error("Error saving user data:", dbError);
+                        dom.signupError.textContent = "Account created, but failed to save user details.";
+                    });
+                })
+                .catch((error) => {
+                    dom.signupError.textContent = getFriendlyAuthError(error.code);
+                });
+        });
+
+        // Logout Button
+        dom.logoutButton.addEventListener('click', () => {
+            signOut(auth).catch((error) => {
+                console.error("Logout Error:", error);
+            });
+        });
+
+        // Auth Page Toggling
+        dom.showSignupLink.addEventListener('click', (e) => { e.preventDefault(); showPage('signup'); });
+        dom.showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showPage('login'); });
+
+        // -------------------------------------------
+        // UI & NAVIGATION
+        // -------------------------------------------
+
+        function showPage(pageId) {
+            dom.loginPage.classList.add('hidden');
+            dom.signupPage.classList.add('hidden');
+            dom.dashboardPage.classList.add('hidden');
+            
+            if (pageId === 'login') dom.loginPage.classList.remove('hidden');
+            if (pageId === 'signup') dom.signupPage.classList.remove('hidden');
+            if (pageId === 'dashboard') dom.dashboardPage.classList.remove('hidden');
+        }
+        
+        function setupUIForRole(role) {
+            // Hide all restricted elements by default
+            dom.adminNavButton.classList.add('hidden');
+            // Hide tabs
+            const statsTabBtn = document.querySelector('.nav-tab-button[data-tab="statistics"]');
+            const selectionsTabBtn = document.querySelector('.nav-tab-button[data-tab="selections"]');
+            
+            if (statsTabBtn) statsTabBtn.classList.add('hidden');
+            if (selectionsTabBtn) selectionsTabBtn.classList.add('hidden');
+
+            // Show elements based on role
+            if (role === 'Admin') {
+                dom.adminNavButton.classList.remove('hidden');
+                if (statsTabBtn) statsTabBtn.classList.remove('hidden');
+                if (selectionsTabBtn) selectionsTabBtn.classList.remove('hidden');
+                fetchAdminUsers(); // Load admin data
+            } else if (role === 'Analyst') {
+                if (statsTabBtn) statsTabBtn.classList.remove('hidden');
+                if (selectionsTabBtn) selectionsTabBtn.classList.remove('hidden');
+            } else {
+                // Standard User (All Matches + High Chance)
+                // They are visible by default, so nothing to remove
+            }
+            
+            // Set default tab
+            switchTab('all-matches');
+        }
+
+        // Tab Switching
+        dom.navTabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.dataset.tab;
+                switchTab(tabName);
+            });
+        });
+        
+        function switchTab(tabName) {
+            activeTab = tabName;
+            
+            dom.tabContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            dom.navTabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+
+            const activeContent = document.getElementById(`${tabName}-tab`);
+            const activeButton = document.querySelector(`.nav-tab-button[data-tab="${tabName}"]`);
+            
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeButton) activeButton.classList.add('active');
+
+            // Special actions on tab switch
+            if (tabName === 'all-matches' || tabName === 'high-chance') {
+                applyFiltersAndRender();
+            } else if (tabName === 'selections') {
+                renderSelectionsTable();
+            } else if (tabName === 'statistics') {
+                renderStatistics();
+            } else if (tabName === 'admin') {
+                fetchAdminUsers();
+            }
+        }
+
+        // -------------------------------------------
+        // DATA FETCHING & PROCESSING
+        // -------------------------------------------
+        
+        function fetchMatchData() {
+            const predictionsRef = ref(db, 'predictions');
+            onValue(predictionsRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    allMatchesData = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                    
+                    // Sort by date, newest first
+                    allMatchesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    populateLeagueFilter();
+                    applyFiltersAndRender();
+                    if (activeTab === 'statistics') {
+                        renderStatistics();
+                    }
+                } else {
+                    allMatchesData = [];
+                    console.log("No data found at /predictions");
+                }
+                dom.loadingSpinner.classList.add('hidden');
+            }, (error) => {
+                console.error("Firebase Read Error:", error);
+                dom.loadingSpinner.classList.add('hidden');
+            });
+        }
+        
+        function populateLeagueFilter() {
+            const leagues = [...new Set(allMatchesData.map(match => match.league))].sort();
+            dom.filters.league.innerHTML = '<option value="">All Leagues</option>'; // Reset
+            leagues.forEach(league => {
+                if (league) {
+                    const option = document.createElement('option');
+                    option.value = league;
+                    option.textContent = league;
+                    dom.filters.league.appendChild(option);
+                }
+            });
+        }
+        
+        function fetchAdminUsers() {
+            const usersRef = ref(db, 'users');
+            get(usersRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const users = snapshot.val();
+                    renderUsersTable(users);
+                }
+            }).catch(error => console.error("Error fetching users:", error));
+        }
+
+        // -------------------------------------------
+        // FILTERING LOGIC
+        // -------------------------------------------
+
+        function applyFiltersAndRender() {
+            // 1. Get all filter values
+            const filters = {
+                league: dom.filters.league.value,
+                confMin: parseFloat(dom.filters.confMin.value) || null,
+                confMax: parseFloat(dom.filters.confMax.value) || null,
+                homePowerMin: parseFloat(dom.filters.homePowerMin.value) || null,
+                homePowerMax: parseFloat(dom.filters.homePowerMax.value) || null,
+                awayPowerMin: parseFloat(dom.filters.awayPowerMin.value) || null,
+                awayPowerMax: parseFloat(dom.filters.awayPowerMax.value) || null,
+                prediction: dom.filters.prediction.value.toLowerCase(),
+                globalSearch: dom.filters.globalSearch.value.toLowerCase(),
+                // Modal filters
+                hOv15Min: parseFloat(dom.filters.hOv15Min.value) || null,
+                hOv15Max: parseFloat(dom.filters.hOv15Max.value) || null,
+                aOv15Min: parseFloat(dom.filters.aOv15Min.value) || null,
+                aOv15Max: parseFloat(dom.filters.aOv15Max.value) || null,
+                hOv25Min: parseFloat(dom.filters.hOv25Min.value) || null,
+                hOv25Max: parseFloat(dom.filters.hOv25Max.value) || null,
+                aOv25Min: parseFloat(dom.filters.aOv25Min.value) || null,
+                aOv25Max: parseFloat(dom.filters.aOv25Max.value) || null,
+                hOv35Min: parseFloat(dom.filters.hOv35Min.value) || null,
+                hOv35Max: parseFloat(dom.filters.hOv35Max.value) || null,
+                aOv35Min: parseFloat(dom.filters.aOv35Min.value) || null,
+                aOv35Max: parseFloat(dom.filters.aOv35Max.value) || null,
+                aPowerOv25Min: parseFloat(dom.filters.aPowerOv25Min.value) || null,
+                aPowerOv25Max: parseFloat(dom.filters.aPowerOv25Max.value) || null,
+                aPowerBttsMin: parseFloat(dom.filters.aPowerBttsMin.value) || null,
+                aPowerBttsMax: parseFloat(dom.filters.aPowerBttsMax.value) || null,
+            };
+
+            // 2. Filter data
+            filteredMatches = allMatchesData.filter(match => {
+                // Helper for min/max checks
+                const inRange = (val, min, max) => {
+                    const numVal = parseFloat(val);
+                    if (isNaN(numVal)) return true; // Don't filter if value is not a number
+                    const minPass = (min === null) || numVal >= min;
+                    const maxPass = (max === null) || numVal <= max;
+                    return minPass && maxPass;
+                };
+
+                // Apply filters
+                if (filters.league && match.league !== filters.league) return false;
+                if (filters.prediction && !match.analyzedPrediction?.toLowerCase().includes(filters.prediction)) return false;
+                
+                if (filters.globalSearch) {
+                    const search = filters.globalSearch;
+                    const home = match.homeTeam?.toLowerCase() || '';
+                    const away = match.awayTeam?.toLowerCase() || '';
+                    const league = match.league?.toLowerCase() || '';
+                    const date = match.date || '';
+                    if (!home.includes(search) && !away.includes(search) && !league.includes(search) && !date.includes(search)) return false;
+                }
+
+                // Main Filters
+                if (!inRange(match.confidence, filters.confMin, filters.confMax)) return false;
+                if (!inRange(match.homePower, filters.homePowerMin, filters.homePowerMax)) return false;
+                if (!inRange(match.awayPower, filters.awayPowerMin, filters.awayPowerMax)) return false;
+
+                // Modal Filters
+                if (!inRange(match.HTeam_OV15, filters.hOv15Min, filters.hOv15Max)) return false;
+                if (!inRange(match.ATeam_OV15, filters.aOv15Min, filters.aOv15Max)) return false;
+                if (!inRange(match.HTeam_OV25, filters.hOv25Min, filters.hOv25Max)) return false;
+                if (!inRange(match.ATeam_OV25, filters.aOv25Min, filters.aOv25Max)) return false;
+                if (!inRange(match.HTeam_OV35, filters.hOv35Min, filters.hOv35Max)) return false;
+                if (!inRange(match.ATeam_OV35, filters.aOv35Min, filters.aOv35Max)) return false;
+                if (!inRange(match.ATeam_Power_Over25, filters.aPowerOv25Min, filters.aPowerOv25Max)) return false;
+                if (!inRange(match.ATeam_Power_BTTS, filters.aPowerBttsMin, filters.aPowerBttsMax)) return false;
+                
+                return true;
+            });
+            
+            // 3. Tab-specific filtering
+            if (activeTab === 'high-chance') {
+                filteredMatches = filteredMatches.filter(m => m.confidence >= 65);
+            }
+
+            // 4. Reset pagination and render
+            currentPage = 1;
+            renderTables();
+        }
+
+        function resetAllFilters() {
+            // Main filters
+            dom.filters.league.value = '';
+            dom.filters.confMin.value = '';
+            dom.filters.confMax.value = '';
+            dom.filters.homePowerMin.value = '';
+            dom.filters.homePowerMax.value = '';
+            dom.filters.awayPowerMin.value = '';
+            dom.filters.awayPowerMax.value = '';
+            dom.filters.prediction.value = '';
+            dom.filters.globalSearch.value = '';
+            // Modal filters
+            dom.filters.hOv15Min.value = ''; dom.filters.hOv15Max.value = '';
+            dom.filters.aOv15Min.value = ''; dom.filters.aOv15Max.value = '';
+            dom.filters.hOv25Min.value = ''; dom.filters.hOv25Max.value = '';
+            dom.filters.aOv25Min.value = ''; dom.filters.aOv25Max.value = '';
+            dom.filters.hOv35Min.value = ''; dom.filters.hOv35Max.value = '';
+            dom.filters.aOv35Min.value = ''; dom.filters.aOv35Max.value = '';
+            dom.filters.aPowerOv25Min.value = ''; dom.filters.aPowerOv25Max.value = '';
+            dom.filters.aPowerBttsMin.value = ''; dom.filters.aPowerBttsMax.value = '';
+
+            applyFiltersAndRender();
+        }
+
+        // -------------------------------------------
+        // TABLE & LIST RENDERING
+        // -------------------------------------------
+
+        function renderTables() {
+            // Paginate
+            const totalMatches = filteredMatches.length;
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalMatches);
+            const paginatedMatches = filteredMatches.slice(startIndex, endIndex);
+
+            let tableHtml = '';
+            paginatedMatches.forEach(match => {
+                tableHtml += createMatchRowHtml(match);
+            });
+
+            // Render to the correct table body
+            if (activeTab === 'all-matches') {
+                dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
+                dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
+            } else if (activeTab === 'high-chance') {
+                dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
+                // High chance tab doesn't have pagination in this setup, but could.
+                // For simplicity, we'll hide pagination here, assuming it re-uses the `all-matches` filter logic.
+                // Or, let's just show it all. For this, I'll render *all* high-chance matches, not paginated.
+                
+                // Re-doing high-chance to not be paginated
+                if (activeTab === 'high-chance') {
+                    let highChanceHtml = '';
+                    filteredMatches.forEach(match => { // 'filteredMatches' is already filtered for high-chance
+                        highChanceHtml += createMatchRowHtml(match);
+                    });
+                     dom.highChanceTableBody.innerHTML = highChanceHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
+                     // Hide pagination for this tab
+                     dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
+                }
+            }
+            
+            // Update pagination controls (only for 'all-matches' tab)
+            if (activeTab === 'all-matches') {
+                dom.pagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
+                dom.pagination.end.textContent = endIndex;
+                dom.pagination.total.textContent = totalMatches;
+                dom.pagination.prev.disabled = (currentPage === 1);
+                dom.pagination.next.disabled = (endIndex === totalMatches);
+            }
+        }
+        
+        function renderSelectionsTable() {
+            let tableHtml = '';
+            const selectedMatches = allMatchesData.filter(match => selections.includes(match.id));
+            
+            selectedMatches.forEach(match => {
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.date || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${match.league || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.homeTeam || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.awayTeam || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium" style="color: ${getConfidenceColor(match.confidence)}">${match.confidence || 0}%</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.analyzedPrediction || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match.result || 'N/A'}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                            <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-id="${match.id}">Delete</button>
+                            <button class="text-emerald hover:text-navy view-details-btn" data-match-id="${match.id}">View</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            dom.selectionsTableBody.innerHTML = tableHtml || `<tr><td colspan="8" class="text-center p-6 text-gray-500">No matches selected.</td></tr>`;
+        }
+
+        function createMatchRowHtml(match) {
+            const isSelected = selections.includes(match.id);
+            const odds = `${match.homeOdds || 'N/A'} / ${match.drawOdds || 'N/A'} / ${match.awayOdds || 'N/A'}`;
+            const success = match.success;
+            let successBadge;
+            if (success === true) {
+                successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span>`;
+            } else if (success === false) {
+                successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>`;
+            } else {
+                 successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">Pending</span>`;
+            }
+            
+            return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-id="${match.id}" ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.date || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${match.league || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.homeTeam || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.awayTeam || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium" style="color: ${getConfidenceColor(match.confidence)}">
+                        ${match.confidence || 0}%
+                    </td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.analyzedPrediction || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match.result || 'N/A'}</td>
+                    <td class="px-4 py-4 whitespace-nowrap">${successBadge}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-emerald hover:text-navy view-details-btn" data-match-id="${match.id}">View Details</button>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        function renderUsersTable(users) {
+            let tableHtml = '';
+            Object.keys(users).forEach(uid => {
+                const user = users[uid];
+                const isCurrentUser = (currentUser && currentUser.uid === uid);
+                
+                tableHtml += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${user.email}</div>
+                            <div class="text-sm text-gray-500">${user.fullName || ''}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <select data-user-id="${uid}" class="role-select rounded-lg border-gray-300 focus:ring-emerald focus:border-emerald" ${isCurrentUser ? 'disabled' : ''}>
+                                <option value="Standard User" ${user.role === 'Standard User' ? 'selected' : ''}>Standard User</option>
+                                <option value="Analyst" ${user.role === 'Analyst' ? 'selected' : ''}>Analyst</option>
+                                <option value="Admin" ${user.role === 'Admin' ? 'selected' : ''}>Admin</option>
+                            </select>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                ${user.status === 'Active' || user.status === undefined ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                ${user.status || 'Active'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button data-user-id="${uid}" class="save-user-btn text-emerald hover:text-navy" ${isCurrentUser ? 'disabled' : ''}>Save</button>
+                            <button data-user-id="${uid}" class="deactivate-user-btn text-red-600 hover:text-red-900 ml-4" ${isCurrentUser ? 'disabled' : ''}>Deactivate</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            dom.usersTableBody.innerHTML = tableHtml;
+        }
+
+        // -------------------------------------------
+        // STATISTICS & CHARTS
+        // -------------------------------------------
+
+        function renderStatistics() {
+            if (!dom.charts.distribution || allMatchesData.length === 0) return;
+            
+            const totalMatches = allMatchesData.length;
+            const successfulMatches = allMatchesData.filter(m => m.success === true).length;
+            const accuracy = totalMatches > 0 ? (successfulMatches / allMatchesData.filter(m => m.success !== undefined).length * 100) : 0;
+
+            // Key Metrics
+            dom.stats.totalMatches.textContent = totalMatches;
+            dom.stats.accuracy.textContent = `${accuracy.toFixed(1)}%`;
+
+            // Prediction Distribution (Pie Chart)
+            const predictions = allMatchesData.map(m => m.analyzedPrediction);
+            const predCounts = predictions.reduce((acc, pred) => {
+                if (pred) {
+                    acc[pred] = (acc[pred] || 0) + 1;
+                }
+                return acc;
+            }, {});
+            if (charts.distribution) charts.distribution.destroy();
+            charts.distribution = new Chart(dom.charts.distribution, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(predCounts),
+                    datasets: [{
+                        data: Object.values(predCounts),
+                        backgroundColor: ['#001f3f', '#00A86B', '#FFD700', '#f56565', '#4299e1', '#9f7aea'],
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Accuracy by League (Bar Chart)
+            const leagueData = allMatchesData.reduce((acc, match) => {
+                if (!match.league) return acc;
+                if (!acc[match.league]) {
+                    acc[match.league] = { total: 0, success: 0 };
+                }
+                if (match.success !== undefined) {
+                    acc[match.league].total++;
+                    if (match.success) {
+                        acc[match.league].success++;
+                    }
+                }
+                return acc;
+            }, {});
+            
+            const sortedLeagues = Object.keys(leagueData)
+                .map(league => ({
+                    name: league,
+                    accuracy: leagueData[league].total > 0 ? (leagueData[league].success / leagueData[league].total) * 100 : 0
+                }))
+                .sort((a, b) => b.accuracy - a.accuracy);
+                
+            dom.stats.topLeague.textContent = sortedLeagues.length > 0 ? sortedLeagues[0].name : 'N/A';
+
+            if (charts.league) charts.league.destroy();
+            charts.league = new Chart(dom.charts.league, {
+                type: 'bar',
+                data: {
+                    labels: sortedLeagues.map(l => l.name).slice(0, 10), // Top 10
+                    datasets: [{
+                        label: 'Accuracy %',
+                        data: sortedLeagues.map(l => l.accuracy).slice(0, 10),
+                        backgroundColor: '#00A86B',
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+
+            // Accuracy Over Time (Line Chart)
+            const timeData = allMatchesData.reduce((acc, match) => {
+                const date = match.date.split('T')[0];
+                if (!acc[date]) {
+                    acc[date] = { total: 0, success: 0 };
+                }
+                if (match.success !== undefined) {
+                    acc[date].total++;
+                    if (match.success) acc[date].success++;
+                }
+                return acc;
+            }, {});
+            
+            const sortedDates = Object.keys(timeData).sort((a,b) => new Date(a) - new Date(b));
+            const dateLabels = sortedDates.slice(-30); // Last 30 days
+            const dateAcc = dateLabels.map(date => {
+                const day = timeData[date];
+                return day.total > 0 ? (day.success / day.total) * 100 : 0;
+            });
+            
+            if (charts.accuracy) charts.accuracy.destroy();
+            charts.accuracy = new Chart(dom.charts.accuracy, {
+                type: 'line',
+                data: {
+                    labels: dateLabels,
+                    datasets: [{
+                        label: 'Daily Accuracy %',
+                        data: dateAcc,
+                        borderColor: '#001f3f',
+                        backgroundColor: 'rgba(0, 31, 63, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+            
+            // Top Team (just an example metric, logic can be complex)
+            // This is a placeholder, a real "top team" needs more definition
+            const homeTeams = allMatchesData.map(m => m.homeTeam);
+            if(homeTeams.length > 0) {
+                 const topTeam = homeTeams.sort((a,b) => homeTeams.filter(v => v===a).length - homeTeams.filter(v => v===b).length).pop();
+                 dom.stats.topTeam.textContent = topTeam;
+            }
+        }
+        
+        function renderModalCharts(match) {
+            // Confidence Gauge
+            const confidence = match.confidence || 0;
+            const gaugeData = {
+                labels: ['Confidence', ''],
+                datasets: [{
+                    data: [confidence, 100 - confidence],
+                    backgroundColor: [getConfidenceColor(confidence), '#e5e7eb'],
+                    borderColor: ['#ffffff', '#ffffff'],
+                    borderWidth: 2,
+                    circumference: 180, // Half circle
+                    rotation: 270,      // Start at the bottom
+                }]
+            };
+            if (charts.modalGauge) charts.modalGauge.destroy();
+            charts.modalGauge = new Chart(dom.charts.modalGauge, {
+                type: 'doughnut',
+                data: gaugeData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    cutout: '70%'
+                }
+            });
+            // Add text in middle (Chart.js doesn't do this natively)
+            // This is a bit of a hack, but works
+            
+            // Team Trend
+            // Mock data as the data structure for trends isn't defined
+            const homeTrend = (match.homeForm || 'W-L-D-W-W').split('-').map(r => r === 'W' ? 3 : (r === 'D' ? 1 : 0));
+            const awayTrend = (match.awayForm || 'L-W-L-D-L').split('-').map(r => r === 'W' ? 3 : (r === 'D' ? 1 : 0));
+
+            if (charts.modalTrend) charts.modalTrend.destroy();
+            charts.modalTrend = new Chart(dom.charts.modalTrend, {
+                type: 'line',
+                data: {
+                    labels: ['G1', 'G2', 'G3', 'G4', 'G5'],
+                    datasets: [
+                        {
+                            label: match.homeTeam,
+                            data: homeTrend,
+                            borderColor: '#00A86B',
+                            tension: 0.1
+                        },
+                        {
+                            label: match.awayTeam,
+                            data: awayTrend,
+                            borderColor: '#001f3f',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+
+        // -------------------------------------------
+        // MODAL LOGIC
+        // -------------------------------------------
+        
+        function openModal(modal) {
+            modal.classList.remove('hidden');
+        }
+        
+        function closeModal(modal) {
+            modal.classList.add('hidden');
+        }
+        
+        function openMatchDetailsModal(matchId) {
+            const match = allMatchesData.find(m => m.id === matchId);
+            if (!match) return;
+            
+            dom.modals.matchTitle.textContent = `${match.homeTeam} vs ${match.awayTeam}`;
+            dom.modals.homeTeam.textContent = match.homeTeam;
+            dom.modals.awayTeam.textContent = match.awayTeam;
+            
+            // Define metrics to show
+            const metrics = [
+                { key: 'result', label: 'Final Score', homeKey: 'homeScore', awayKey: 'awayScore', bold: true }, // Assumes 'result' is like "2-1"
+                { key: 'Form', label: 'Form', bold: false},
+                { key: 'FormRate', label: 'Form Rate', bold: false},
+                { key: 'Confidence', label: 'Confidence', bold: true},
+                { key: 'Prediction', label: 'Prediction', bold: false},
+                { key: 'CorrectScore', label: 'Correct Score', bold: false},
+                { key: 'TableStanding', label: 'Table Standing', bold: false},
+                { key: 'Last5OverallWins', label: 'Last 5 Overall Wins', bold: false},
+                { key: 'Last5HomeAwayWins', label: 'Last 5 Home/Away Wins', homeKey: 'Last5HomeWins', awayKey: 'Last5AwayWins', bold: false},
+                { key: 'AvgScored', label: 'Avg Scored', bold: false},
+                { key: 'AvgConceded', label: 'Avg Conceded', bold: false},
+                { key: 'PowerOver25', label: 'Power – Over 2.5', bold: false},
+                { key: 'PowerBTTS', label: 'Power – BTTS', bold: false},
+            ];
+            
+            let tableHtml = '';
+            metrics.forEach(metric => {
+                let homeVal, awayVal;
+                
+                if (metric.key === 'result' && match.result) {
+                    const scores = match.result.split('-');
+                    homeVal = scores[0] || 'N/A';
+                    awayVal = scores[1] || 'N/A';
+                } else {
+                    homeVal = match[metric.homeKey || `HTeam_${metric.key}`] || match[metric.key] || 'N/A';
+                    awayVal = match[metric.awayKey || `ATeam_${metric.key}`] || match[metric.key] || 'N/A';
+                }
+
+                // Special handling for single-value metrics
+                if (['Confidence', 'Prediction', 'CorrectScore'].includes(metric.key)) {
+                    awayVal = 'N/A'; // Or show same value
+                }
+                if (metric.key === 'Confidence') homeVal = `${homeVal}%`;
+                
+                tableHtml += `
+                    <tr class="${metric.bold ? 'font-bold' : ''}">
+                        <td class="px-4 py-3 text-sm ${metric.bold ? 'text-gray-900' : 'text-gray-700'}">${metric.label}</td>
+                        <td class="px-4 py-3 text-center text-sm ${metric.bold ? 'text-lg text-navy' : 'text-gray-600'}">${homeVal}</td>
+                        <td class="px-4 py-3 text-center text-sm ${metric.bold ? 'text-lg text-navy' : 'text-gray-600'}">${awayVal}</td>
+                    </tr>
+                `;
+            });
+            
+            dom.modals.comparisonTable.innerHTML = tableHtml;
+            
+            openModal(dom.modals.matchDetails);
+            
+            // Render charts *after* modal is visible
+            setTimeout(() => {
+                renderModalCharts(match);
+            }, 100);
+        }
+
+        // -------------------------------------------
+        // EVENT LISTENERS
+        // -------------------------------------------
+        
+        // Filter Buttons
+        dom.filterButtons.moreFilters.addEventListener('click', () => openModal(dom.modals.moreFilters));
+        dom.filterButtons.closeMoreFilters.addEventListener('click', () => closeModal(dom.modals.moreFilters));
+        dom.filterButtons.applyMain.addEventListener('click', applyFiltersAndRender);
+        dom.filterButtons.applyModal.addEventListener('click', () => {
+            applyFiltersAndRender();
+            closeModal(dom.modals.moreFilters);
+        });
+        dom.filterButtons.resetMain.addEventListener('click', resetAllFilters);
+        dom.filterButtons.resetModal.addEventListener('click', resetAllFilters);
+        dom.filters.globalSearch.addEventListener('input', applyFiltersAndRender);
+        
+        // Pagination
+        dom.pagination.prev.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTables();
+            }
+        });
+        dom.pagination.next.addEventListener('click', () => {
+            const totalMatches = filteredMatches.length;
+            if (currentPage * rowsPerPage < totalMatches) {
+                currentPage++;
+                renderTables();
+            }
+        });
+        
+        // Dynamic Table Clicks (All Matches)
+        dom.matchesTableBody.addEventListener('click', (e) => {
+            const viewBtn = e.target.closest('.view-details-btn');
+            if (viewBtn) {
+                openMatchDetailsModal(viewBtn.dataset.matchId);
+                return;
+            }
+            
+            const selectBox = e.target.closest('.select-match-checkbox');
+            if (selectBox) {
+                toggleSelection(selectBox.dataset.matchId, selectBox.checked);
+                return;
+            }
+        });
+        
+        // Dynamic Table Clicks (High Chance)
+        dom.highChanceTableBody.addEventListener('click', (e) => {
+            const viewBtn = e.target.closest('.view-details-btn');
+            if (viewBtn) {
+                openMatchDetailsModal(viewBtn.dataset.matchId);
+                return;
+            }
+            
+            const selectBox = e.target.closest('.select-match-checkbox');
+            if (selectBox) {
+                toggleSelection(selectBox.dataset.matchId, selectBox.checked);
+                return;
+            }
+        });
+        
+        // Dynamic Table Clicks (Selections)
+        dom.selectionsTableBody.addEventListener('click', (e) => {
+            const viewBtn = e.target.closest('.view-details-btn');
+            if (viewBtn) {
+                openMatchDetailsModal(viewBtn.dataset.matchId);
+                return;
+            }
+            
+            const removeBtn = e.target.closest('.remove-selection-btn');
+            if (removeBtn) {
+                toggleSelection(removeBtn.dataset.matchId, false);
+                return;
+            }
+        });
+        
+        // Dynamic Table Clicks (Admin Users)
+        dom.usersTableBody.addEventListener('click', (e) => {
+            const saveBtn = e.target.closest('.save-user-btn');
+            if (saveBtn) {
+                const userId = saveBtn.dataset.userId;
+                const roleSelect = document.querySelector(`.role-select[data-user-id="${userId}"]`);
+                if (roleSelect) {
+                    updateUserRole(userId, roleSelect.value);
+                }
+                return;
+            }
+            
+            // Add deactivate logic here if needed
+        });
+        
+        // Close Modals
+        dom.modals.closeMatchDetails.addEventListener('click', () => closeModal(dom.modals.matchDetails));
+        
+        // Selections Export
+        dom.selections.exportCsv.addEventListener('click', exportSelectionsToCSV);
+
+        // -------------------------------------------
+        // HELPER FUNCTIONS
+        // -------------------------------------------
+        
+        function getFriendlyAuthError(code) {
+            switch (code) {
+                case 'auth/invalid-email':
+                    return 'Please enter a valid email address.';
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                    return 'Invalid email or password.';
+                case 'auth/email-already-in-use':
+                    return 'This email address is already in use.';
+                case 'auth/weak-password':
+                    return 'Password should be at least 6 characters long.';
+                default:
+                    return 'An unknown error occurred. Please try again.';
+            }
+        }
+        
+        function getConfidenceColor(confidence) {
+            if (confidence >= 75) return '#00A86B'; // Emerald
+            if (confidence >= 65) return '#FFD700'; // Gold
+            if (confidence >= 50) return '#001f3f'; // Navy
+            return '#ef4444'; // Red
+        }
+        
+        function toggleSelection(matchId, isSelected) {
+            if (isSelected) {
+                if (!selections.includes(matchId)) {
+                    selections.push(matchId);
+                }
+            } else {
+                selections = selections.filter(id => id !== matchId);
+            }
+            
+            // Re-render relevant tables
+            if (activeTab === 'all-matches' || activeTab === 'high-chance') {
+                // Find the checkbox and update its state (no full re-render needed)
+                const checkbox = document.querySelector(`.select-match-checkbox[data-match-id="${matchId}"]`);
+                if (checkbox) checkbox.checked = isSelected;
+            } else if (activeTab === 'selections') {
+                renderSelectionsTable(); // Re-render selections list
+            }
+        }
+        
+        function updateUserRole(userId, newRole) {
+            const userRoleRef = ref(db, `users/${userId}/role`);
+            set(userRoleRef, newRole)
+                .then(() => {
+                    console.log(`User ${userId} role updated to ${newRole}`);
+                    // You could show a small success message here
+                })
+                .catch(error => console.error("Failed to update user role:", error));
+        }
+        
+        function exportSelectionsToCSV() {
+            const selectedMatches = allMatchesData.filter(match => selections.includes(match.id));
+            if (selectedMatches.length === 0) {
+                alert("No matches selected to export."); // Using alert as a placeholder, replace with modal
+                return;
+            }
+            
+            const headers = "Date,League,HomeTeam,AwayTeam,Prediction,Confidence,Result,Success";
+            const rows = selectedMatches.map(m => {
+                return [
+                    m.date, m.league, m.homeTeam, m.awayTeam,
+                    m.analyzedPrediction, m.confidence, m.result, m.success
+                ].join(',');
+            });
+            
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers + "\n" 
+                + rows.join("\n");
+                
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `DataCompass_Selections_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    </script>
+
+</body>
+</html>
