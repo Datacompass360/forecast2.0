@@ -2329,19 +2329,7 @@ function sanitizeKey(key) {
   return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
 }
 
-function sanitizeObject(obj) {
-  const cleanObj = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const cleanKey = sanitizeKey(key);
-    if (!cleanKey) continue;
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      cleanObj[cleanKey] = sanitizeObject(value);
-    } else {
-      cleanObj[cleanKey] = value;
-    }
-  }
-  return cleanObj;
-}
+
 
 async function pushMatchToFirebase(matchData) {
   try {
