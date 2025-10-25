@@ -2293,10 +2293,7 @@
 
     
 /* ======= Sanitization and Safe Firebase Write ======= */
-function sanitizeKey(key) {
-  if (!key || typeof key !== "string") return null;
-  return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
-}
+
 
 function sanitizeObject(obj) {
   const cleanObj = {};
