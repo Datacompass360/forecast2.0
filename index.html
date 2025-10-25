@@ -2307,7 +2307,7 @@ function sanitizeObject(obj) {
 }
 
 
-|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
     const safeMatchKey = sanitizeKey(matchKeyRaw);
     const safeMatchData = sanitizeObject(matchData);
     const matchRef = ref(db, `predictions/${safeMatchKey}`);
