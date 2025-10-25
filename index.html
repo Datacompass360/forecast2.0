@@ -855,7 +855,7 @@
         // -------------------------------------------
         // Global State
         // -------------------------------------------
-        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv";
+        const GOOGLE_SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent("https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv");
         // This is a list of all column names from the sheet that are expected to be numbers
         const numericColumns = [
             "Home Odds", "Draw Odds", "Away Odds", "Home Form Rate", "Away Form Rate",
@@ -1022,47 +1022,6 @@
             if (!key || typeof key !== 'string') return null;
             return key.replace(/[.#$[\]]/g, "_"); // Replace forbidden chars
         }
-/* ======= ADDED: Robust sanitized Firebase push function ======= */
-async function pushMatchToFirebase(matchData) {
-    try {
-        // reuse sanitizeKey from file (assumed to exist)
-        function _sanitizeKeyLocal(key) {
-            if (!key || typeof key !== "string") return null;
-            return key.replace(/[.#$[\]/]/g, "_").replace(/\s+/g, "_");
-        }
-        function _sanitizeObjectLocal(obj) {
-            const cleanObj = {};
-            for (const [key, value] of Object.entries(obj)) {
-                const cleanKey = _sanitizeKeyLocal(key);
-                if (!cleanKey) continue;
-                if (value && typeof value === "object" && !Array.isArray(value)) {
-                    cleanObj[cleanKey] = _sanitizeObjectLocal(value);
-                } else {
-                    cleanObj[cleanKey] = value;
-                }
-            }
-            return cleanObj;
-        }
-
-        // Build a match key from available fields if possible
-        const matchKeyRaw = (matchData["Match_Date"] || matchData["Match Date"] || "") + "|" + (matchData["Home Team"] || matchData["Home_Team"] || matchData["Home"] || "") + "|" + (matchData["Away Team"] || matchData["Away_Team"] || matchData["Away"] || "");
-        const safeMatchKey = (typeof sanitizeKey === 'function') ? sanitizeKey(matchKeyRaw) : _sanitizeKeyLocal(matchKeyRaw);
-
-        const safeMatchData = (typeof sanitizeObject === 'function') ? sanitizeObject(matchData) : _sanitizeObjectLocal(matchData);
-
-        // Write to Firebase at predictions/<safeMatchKey>
-        const matchRef = ref(db, `predictions/${safeMatchKey}`);
-        await set(matchRef, safeMatchData);
-
-        console.log("✅ Uploaded:", safeMatchKey);
-        showNotification(`Uploaded: ${safeMatchKey}`, "success");
-    } catch (err) {
-        console.error("Firebase upload error:", err);
-        showNotification("Firebase upload error: " + (err && err.message ? err.message : err), "error");
-    }
-}
-/* ======= End added function ======= */
-
         
         /**
          * Shows a notification popup.
@@ -2333,48 +2292,43 @@ async function pushMatchToFirebase(matchData) {
         }
 
     
-// ===== Added: Safe Push Button Handler =====
-document.addEventListener("DOMContentLoaded", function(){
-    const btn = document.getElementById("push-to-firebase-btn");
-    if (btn) {
-        // prevent duplicate bindings
-        if (!btn._safeHandlerAdded) {
-            btn.addEventListener("click", async function(){
-                showNotification("Starting upload to Firebase...", "info");
-                try {
-                    // If a function fetchMatchData exists use it, else fetch sheet CSV
-                    let rows = [];
-                    if (typeof fetchMatchData === 'function') {
-                        try {
-                            rows = await fetchMatchData();
-                        } catch(e) {
-                            console.warn("fetchMatchData failed, will try fetchSheetData fallback:", e);
-                        }
-                    }
-                    if ((!rows || rows.length === 0) && typeof fetchSheetData === 'function') {
-                        rows = await fetchSheetData();
-                    }
-                    if (!rows || rows.length === 0) {
-                        showNotification("No data found to upload.", "error");
-                        return;
-                    }
-                    for (const r of rows) {
-                        // Upload sequentially to avoid overwhelming RTDB rules
-                        // use our sanitized push function
-                        // ensure r is a plain object
-                        await pushMatchToFirebase(r);
-                    }
-                    showNotification("All rows uploaded.", "success");
-                } catch (err) {
-                    console.error("Upload routine error:", err);
-                    showNotification("Upload error: " + (err && err.message ? err.message : err), "error");
-                }
-            });
-            btn._safeHandlerAdded = true;
-        }
+/* ======= Sanitization and Safe Firebase Write ======= */
+function sanitizeKey(key) {
+  if (!key || typeof key !== "string") return null;
+  return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
+}
+
+function sanitizeObject(obj) {
+  const cleanObj = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const cleanKey = sanitizeKey(key);
+    if (!cleanKey) continue;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      cleanObj[cleanKey] = sanitizeObject(value);
+    } else {
+      cleanObj[cleanKey] = value;
     }
-});
-// ===== End Handler =====
+  }
+  return cleanObj;
+}
+
+async function pushMatchToFirebase(matchData) {
+  try {
+    const matchKeyRaw =
+      `${matchData["Match_Date"] || ""}|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+    const safeMatchKey = sanitizeKey(matchKeyRaw);
+    const safeMatchData = sanitizeObject(matchData);
+    const matchRef = ref(db, `predictions/${safeMatchKey}`);
+    await set(matchRef, safeMatchData);
+    console.log(`✅ Uploaded: ${safeMatchKey}`);
+    showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
+  } catch (err) {
+    console.error("❌ Firebase Upload Error:", err);
+    showNotification(`Firebase Error: ${err.message}`, "error");
+  }
+}
+/* ======= End of Sanitization Section ======= */
+
 </script>
 
 </body>
