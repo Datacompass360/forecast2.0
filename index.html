@@ -746,7 +746,7 @@
                         <label class="block text-sm font-medium text-gray-700">H-Team Power BTTS</label>
                         <div class="flex space-x-2 mt-1">
                             <input type="number" id="filter-h-power-btts-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-h-power-btts-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-power-btts-max" placeholder="Max" class="w-1/Added/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
                     <!-- ATeam Power - BTTS -->
@@ -999,11 +999,7 @@
                 totalWins: document.getElementById('stats-total-wins'),
                 winRate: document.getElementById('stats-win-rate'),
             },
-            charts: {
-                prediction: document.getElementById('chart-prediction')?.getContext('2d'),
-                predictedOutcome: document.getElementById('chart-predicted-outcome')?.getContext('2d'),
-                expectedOutcome: document.getElementById('chart-expected-outcome')?.getContext('2d'),
-            },
+            // 🔧 FIX: Removed charts from DOM cache, will acquire in renderStatistics function
             selections: {
                 saveBtn: document.getElementById('save-collection-btn'),
                 loadSelect: document.getElementById('load-collection-select'),
@@ -1017,6 +1013,16 @@
         // UTILITY FUNCTIONS
         // -------------------------------------------
 
+        /**
+         * 🔧 FIX: Sanitizes a string to be used as a Firebase Realtime Database key.
+         * @param {string} key - The string to sanitize.
+         * @returns {string|null} A sanitized key or null if input is invalid.
+         */
+        function sanitizeKey(key) {
+            if (!key || typeof key !== 'string') return null;
+            return key.replace(/[.#$[\]]/g, "_"); // Replace forbidden chars
+        }
+        
         /**
          * Shows a notification popup.
          * @param {string} message - The message to display.
@@ -1332,10 +1338,13 @@
                         const match = fbData[key];
                         // Ensure MatchKey is present, use key if not
                         if (!match.MatchKey) {
-                            match.MatchKey = key;
+                            // If key was sanitized, this object won't have the original
+                            // We rely on the object's internal MatchKey property
+                            console.warn("Match in Firebase missing MatchKey property:", key);
                         }
                         return match;
                     });
+                    // We must use the MatchKey *property* from the object, not the FB key
                     stagedKeys = new Set(fbMatches.map(m => m.MatchKey));
                     console.log(`Loaded ${fbMatches.length} matches from Firebase.`);
                 }
@@ -1389,7 +1398,12 @@
                     console.log(`Auto-staging ${matchesToStage.length} matches.`);
                     
                     const stagingPromises = matchesToStage.map(match => {
-                        return set(ref(db, 'predictions/' + match.MatchKey), match);
+                        const safeKey = sanitizeKey(match.MatchKey); // 🔧 FIX: Sanitize the key
+                        if (!safeKey) {
+                            console.warn("Skipping staging for match with invalid key:", match.MatchKey);
+                            return Promise.resolve(); // Don't block other promises
+                        }
+                        return set(ref(db, 'predictions/' + safeKey), match); // 🔧 FIX: Use safeKey
                     });
                     await Promise.all(stagingPromises);
                     
@@ -1878,8 +1892,15 @@
         // -------------------------------------------
 
         function renderStatistics() {
-            if (!dom.charts.prediction || allMatchesData.length === 0) {
-                console.log("Charts context not found or no data.");
+            // 🔧 FIX: Re-acquire chart contexts in case DOM wasn't ready on initial load
+            const chartCtx = {
+                prediction: document.getElementById('chart-prediction')?.getContext('2d'),
+                predictedOutcome: document.getElementById('chart-predicted-outcome')?.getContext('2d'),
+                expectedOutcome: document.getElementById('chart-expected-outcome')?.getContext('2d'),
+            };
+
+            if (!chartCtx.prediction || allMatchesData.length === 0) {
+                console.warn("Charts context not found or no data."); // 🔧 FIX: Use warn
                 return;
             }
             
@@ -1971,9 +1992,9 @@
             };
 
             // 3. Render all 3 charts
-            charts.prediction = renderBarChart(dom.charts.prediction, charts.prediction, "Prediction");
-            charts.predictedOutcome = renderBarChart(dom.charts.predictedOutcome, charts.predictedOutcome, "Predicted Outcome");
-            charts.expectedOutcome = renderBarChart(dom.charts.expectedOutcome, charts.expectedOutcome, "Expected Outcome");
+            charts.prediction = renderBarChart(chartCtx.prediction, charts.prediction, "Prediction");
+            charts.predictedOutcome = renderBarChart(chartCtx.predictedOutcome, charts.predictedOutcome, "Predicted Outcome");
+            charts.expectedOutcome = renderBarChart(chartCtx.expectedOutcome, charts.expectedOutcome, "Expected Outcome");
         }
 
         // -------------------------------------------
@@ -2086,7 +2107,12 @@
                 if (match) {
                     try {
                         match.Staged = true; // Mark as manually staged
-                        await set(ref(db, 'predictions/' + match.MatchKey), match);
+                        const safeKey = sanitizeKey(match.MatchKey); // 🔧 FIX: Sanitize the key
+                        if (!safeKey) { // 🔧 FIX
+                            console.warn("Skipping push for match with invalid key:", match.MatchKey);
+                            return; // Skip this one
+                        }
+                        await set(ref(db, 'predictions/' + safeKey), match); // 🔧 FIX: Use safeKey
                         successCount++;
                     } catch (error) {
                         console.error(`Failed to push ${matchKey}:`, error);
