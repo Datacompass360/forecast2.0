@@ -2307,11 +2307,10 @@ function sanitizeObject(obj) {
 }
 
 
-${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
-    const safeMatchKey = sanitizeKey(matchKeyRaw);
-    const safeMatchData = sanitizeObject(matchData);
-    const matchRef = ref(db, `predictions/${safeMatchKey}`);
-    await set(matchRef, safeMatchData);
+const matchKeyRaw = `${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+const safeMatchKey = sanitizeKey(matchKeyRaw);
+const safeMatchData = sanitizeObject(matchData);
+const matchRef = ref(db, `predictions/${safeMatchKey}`);
     console.log(`✅ Uploaded: ${safeMatchKey}`);
     showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
   } catch (err) {
