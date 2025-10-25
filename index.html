@@ -2306,18 +2306,19 @@ function sanitizeObject(obj) {
   return cleanObj;
 }
 
+try {
+  const matchKeyRaw = `${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+  const safeMatchKey = sanitizeKey(matchKeyRaw);
+  const safeMatchData = sanitizeObject(matchData);
+  const matchRef = ref(db, `predictions/${safeMatchKey}`);
 
-const matchKeyRaw = `${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
-const safeMatchKey = sanitizeKey(matchKeyRaw);
-const safeMatchData = sanitizeObject(matchData);
-const matchRef = ref(db, `predictions/${safeMatchKey}`);
-    console.log(`✅ Uploaded: ${safeMatchKey}`);
-    showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
-  } catch (err) {
-    console.error("❌ Firebase Upload Error:", err);
-    showNotification(`Firebase Error: ${err.message}`, "error");
-  }
+  console.log(`✅ Uploaded: ${safeMatchKey}`);
+  showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
+} catch (err) {
+  console.error("❌ Firebase Upload Error:", err);
+  showNotification(`Firebase Error: ${err.message}`, "error");
 }
+
 /* ======= End of Sanitization Section ======= */
 
 
