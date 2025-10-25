@@ -1018,10 +1018,7 @@
          * @param {string} key - The string to sanitize.
          * @returns {string|null} A sanitized key or null if input is invalid.
          */
-        function sanitizeKey(key) {
-            if (!key || typeof key !== 'string') return null;
-            return key.replace(/[.#$[\]]/g, "_"); // Replace forbidden chars
-        }
+        
         
         /**
          * Shows a notification popup.
@@ -2295,6 +2292,41 @@
 /* ======= Sanitization and Safe Firebase Write ======= */
 
 
+;
+  for (const [key, value] of Object.entries(obj)) {
+    const cleanKey = sanitizeKey(key);
+    if (!cleanKey) continue;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      cleanObj[cleanKey] = sanitizeObject(value);
+    } else {
+      cleanObj[cleanKey] = value;
+    }
+  }
+  return cleanObj;
+}
+
+|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+    const safeMatchKey = sanitizeKey(matchKeyRaw);
+    const safeMatchData = sanitizeObject(matchData);
+    const matchRef = ref(db, `predictions/${safeMatchKey}`);
+    await set(matchRef, safeMatchData);
+    console.log(`✅ Uploaded: ${safeMatchKey}`);
+    showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
+  } catch (err) {
+    console.error("❌ Firebase Upload Error:", err);
+    showNotification(`Firebase Error: ${err.message}`, "error");
+  }
+}
+/* ======= End of Sanitization Section ======= */
+
+
+/* ======= Sanitization and Safe Firebase Write ======= */
+function sanitizeKey(key) {
+  if (!key || typeof key !== "string") return null;
+  // Replace Firebase forbidden characters and spaces
+  return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
+}
+
 function sanitizeObject(obj) {
   const cleanObj = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -2311,8 +2343,7 @@ function sanitizeObject(obj) {
 
 async function pushMatchToFirebase(matchData) {
   try {
-    const matchKeyRaw =
-      `${matchData["Match_Date"] || ""}|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
+    const matchKeyRaw = `${matchData["Match_Date"] || ""}|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
     const safeMatchKey = sanitizeKey(matchKeyRaw);
     const safeMatchData = sanitizeObject(matchData);
     const matchRef = ref(db, `predictions/${safeMatchKey}`);
