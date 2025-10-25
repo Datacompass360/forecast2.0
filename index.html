@@ -28,6 +28,10 @@
                         'navy': '#001f3f',
                         'emerald': '#00A86B',
                         'gold': '#FFD700',
+                        'light-green': '#c8e6c9', // For 50-60%
+                        'dark-green': '#4caf50',  // For >=60%
+                        'light-red': '#ffcdd2',
+                        'light-gray': '#f0f4f8',
                     },
                     fontFamily: {
                         'sans': ['Poppins', 'sans-serif'], // For headings
@@ -89,19 +93,51 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+        /* Custom styles for conditional formatting */
+        .row-success {
+            background-color: #e8f5e9 !important; /* Light green for success */
+        }
+        .row-fail {
+            background-color: #ffebf0 !important; /* Light red for fail */
+        }
+        .row-pending {
+            background-color: #ffffff;
+        }
+        .row-success:hover {
+            background-color: #dceddd !important;
+        }
+        .row-fail:hover {
+            background-color: #ffe0e8 !important;
+        }
+
+        /* Chart.js size */
+        .chart-container {
+            width: 100%;
+            max-width: 400px; /* 3x3 inches is small, this is a bit bigger */
+            height: 400px;
+            margin: auto;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
 
     <!-- =================================================================== -->
-    <!-- LOADING SPINNER                                                     -->
+    <!-- NOTIFICATION POPUP (Replaces alert())                               -->
     <!-- =================================================================== -->
-    <div id="loading-spinner" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
-        <div class="h-16 w-16 animate-spin rounded-full border-4 border-t-emerald border-gray-200"></div>
+    <div id="notification-popup" class="hidden fixed top-5 right-5 z-[100] p-4 rounded-lg shadow-lg text-white transition-all duration-300 max-w-sm">
+        <span id="notification-message"></span>
     </div>
 
     <!-- =================================================================== -->
-    <!-- LOGIN PAGE                                                          -->
+    <!-- LOADING SPINNER                                                     -->
+    <!-- =================================================================== -->
+    <div id="loading-spinner" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
+        <div class="h-16 w-16 animate-spin rounded-full border-4 border-t-emerald border-gray-200"></div>
+        <p id="loading-message" class="mt-4 text-lg text-navy font-medium">Loading...</p>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- LOGIN PAGE (Unchanged)                                              -->
     <!-- =================================================================== -->
     <div id="login-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-t from-navy to-gray-100 p-4">
         <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
@@ -151,7 +187,7 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- SIGNUP PAGE                                                         -->
+    <!-- SIGNUP PAGE (Unchanged)                                             -->
     <!-- =================================================================== -->
     <div id="signup-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-t from-navy to-gray-100 p-4">
         <div class="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
@@ -193,7 +229,7 @@
     <!-- DASHBOARD PAGE                                                      -->
     <!-- =================================================================== -->
     <div id="dashboard-page" class="hidden h-screen flex flex-col">
-        <!-- Header -->
+        <!-- Header (Unchanged) -->
         <header class="bg-navy text-white shadow-lg flex items-center justify-between px-6 py-3 z-10">
             <div class="flex items-center space-x-3">
                 <!-- Logo with Pulse -->
@@ -217,7 +253,7 @@
                 </div>
             </div>
 
-            <!-- User Menu -->
+            <!-- User Menu (Unchanged) -->
             <div class="flex items-center space-x-4">
                 <div class="text-right">
                     <div class="text-sm text-gray-300">Welcome,</div>
@@ -233,8 +269,8 @@
 
         <!-- Main Content -->
         <div class="flex flex-1 overflow-hidden">
-            <!-- Navigation Sidebar -->
-            <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2">
+            <!-- Navigation Sidebar (Unchanged) -->
+            <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2 overflow-y-auto">
                 <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="all-matches">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 16h.01" /></svg>
                     <span>🏆 All Matches</span>
@@ -261,15 +297,23 @@
             <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
                 <!-- 
                   =======================
-                  TAB: All Matches
+                  TAB: All Matches (UPDATED)
                   ======================= 
                 -->
                 <div id="all-matches-tab" class="tab-content">
-                    <h1 class="text-3xl font-bold text-navy mb-6">All Matches</h1>
+                    <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
+                        <h1 class="text-3xl font-bold text-navy">All Matches</h1>
+                        <button id="push-to-firebase-btn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md flex items-center space-x-2 transition duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                            <span>Push Selected to Firebase</span>
+                        </button>
+                    </div>
                     
-                    <!-- Main Filters -->
+                    <!-- Main Filters (UPDATED) -->
                     <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <!-- League -->
                             <div>
                                 <label for="filter-league" class="block text-sm font-medium text-gray-700">League</label>
@@ -278,12 +322,35 @@
                                     <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <!-- Confidence % -->
+                            <!-- Date -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Confidence %</label>
+                                <label for="filter-date" class="block text-sm font-medium text-gray-700">Date</label>
+                                <input type="date" id="filter-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                            </div>
+                            <!-- Correct Score -->
+                            <div>
+                                <label for="filter-correct-score" class="block text-sm font-medium text-gray-700">Correct Score</label>
+                                <input type="text" id="filter-correct-score" placeholder="e.g., 2-1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                            </div>
+                            <!-- Recommendation Tip -->
+                            <div>
+                                <label for="filter-recommendation-tip" class="block text-sm font-medium text-gray-700">Recommendation Tip</label>
+                                <input type="text" id="filter-recommendation-tip" placeholder="e.g., Home" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                            </div>
+                            <!-- Predicted Total Goals -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Predicted Total Goals</label>
                                 <div class="flex space-x-2 mt-1">
-                                    <input type="number" id="filter-conf-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                                    <input type="number" id="filter-conf-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-pred-goals-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-pred-goals-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
+                            </div>
+                            <!-- Goals to be Scored -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Goals to be Scored</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-goals-scored-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-goals-scored-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                                 </div>
                             </div>
                             <!-- Home Team Power -->
@@ -302,10 +369,21 @@
                                     <input type="number" id="filter-away-power-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                                 </div>
                             </div>
-                            <!-- Analyzed Prediction -->
+                             <!-- Home Team Table Standing -->
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">Home Standing</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-home-standing-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-home-standing-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
+                            </div>
+                            <!-- Away Team Table Standing -->
                             <div>
-                                <label for="filter-prediction" class="block text-sm font-medium text-gray-700">Prediction</label>
-                                <input type="text" id="filter-prediction" placeholder="e.g., Home Win" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                                <label class="block text-sm font-medium text-gray-700">Away Standing</label>
+                                <div class="flex space-x-2 mt-1">
+                                    <input type="number" id="filter-away-standing-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <input type="number" id="filter-away-standing-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center justify-end space-x-3 mt-4">
@@ -321,44 +399,34 @@
                         </div>
                     </div>
 
-                    <!-- Match Table -->
+                    <!-- Match Table (UPDATED) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Odds (H/D/A)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sel</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">⭐</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Odds (H/D/A)</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">C. Score</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf. %</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred. Outcome</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred. Prob. %</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exp. Outcome</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prob. Rate</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Win</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Draw</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Win</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="matches-table-body" class="bg-white divide-y divide-gray-200">
                                     <!-- Rows populated by JS -->
-                                    <!-- Example Row:
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-4 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald"></td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">2025-10-21</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">EPL</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Arsenal</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Chelsea</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">1.8 / 3.5 / 4.0</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-emerald">74%</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">Home Win</td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">2-1</td>
-                                        <td class="px-4 py-4 whitespace-nowrap"><span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span></td>
-                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button class="text-emerald hover:text-navy view-details-btn" data-match-id="match_001">View</button>
-                                        </td>
-                                    </tr>
-                                    -->
                                 </tbody>
                             </table>
                         </div>
@@ -381,17 +449,25 @@
 
                 <!-- 
                   =======================
-                  TAB: Selections
+                  TAB: Selections (UPDATED)
                   ======================= 
                 -->
                 <div id="selections-tab" class="tab-content hidden">
                     <h1 class="text-3xl font-bold text-navy mb-6">My Selections</h1>
                     
                     <div class="bg-white rounded-xl shadow-lg p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
-                        <div class="flex-grow flex items-center space-x-3">
-                            <input type="text" id="collection-name" placeholder="Name your collection..." class="w-full max-w-xs rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <button id="save-collection-btn" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 font-medium">Save Collection</button>
+                        <!-- Left side: Load/Save -->
+                        <div class="flex-grow flex flex-wrap items-center gap-3">
+                            <select id="load-collection-select" class="w-full sm:w-auto rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                <option value="">Load a collection...</option>
+                                <!-- Loaded by JS -->
+                            </select>
+                            <input type="text" id="collection-name" placeholder="Name new collection..." class="w-full sm:w-auto flex-grow rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <button id="save-collection-btn" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 font-medium w-full sm:w-auto">
+                                Save Collection
+                            </button>
                         </div>
+                        <!-- Right side: Export -->
                         <div class="flex space-x-3">
                             <button id="export-csv-btn" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-medium flex items-center space-x-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -404,21 +480,20 @@
                         </div>
                     </div>
                     
-                    <!-- Selections Table -->
+                    <!-- Selections Table (UPDATED to match new main table) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <!-- Columns similar to All Matches, but with Delete/Pin -->
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">⭐</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf. %</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="selections-table-body" class="bg-white divide-y divide-gray-200">
@@ -431,34 +506,33 @@
 
                 <!-- 
                   =======================
-                  TAB: High Chance
+                  TAB: High Chance (UPDATED)
                   ======================= 
                 -->
                 <div id="high-chance-tab" class="tab-content hidden">
                     <div class="flex items-center justify-between mb-6">
-                        <h1 class="text-3xl font-bold text-navy">High Chance Matches (≥ 65% Confidence)</h1>
-                        <button id="notify-me-btn" class="px-5 py-2.5 bg-gold text-navy rounded-lg hover:bg-opacity-90 font-semibold shadow-md flex items-center space-x-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341A6.002 6.002 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                            <span>Notify Me</span>
-                        </button>
+                        <h1 class="text-3xl font-bold text-navy">High Chance Matches</h1>
+                        <p class="text-lg text-gray-600">Conf. ≥ 60% & Pred. Prob. > 50% & Prob. Rate > 45</p>
                     </div>
 
-                    <!-- High Chance Table (re-uses logic, just filtered data) -->
+                    <!-- High Chance Table (UPDATED schema) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gold">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">League</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sel</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">⭐</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">C. Score</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf. %</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred. Prob. %</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prob. Rate</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="high-chance-table-body" class="bg-white divide-y divide-gray-200">
@@ -466,26 +540,40 @@
                                 </tbody>
                             </table>
                         </div>
+                         <!-- Pagination for High Chance -->
+                         <div id="high-chance-pagination" class="flex items-center justify-between px-4 py-3 border-t border-gray-200 sm:px-6">
+                            <div class="text-sm text-gray-700">
+                                Showing <span id="hc-page-info-start">1</span> to <span id="hc-page-info-end">30</span> of <span id="hc-page-info-total">0</span> results
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="hc-prev-page" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                                    Previous
+                                </button>
+                                <button id="hc-next-page" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 
                   =======================
-                  TAB: Statistics
+                  TAB: Statistics (UPDATED)
                   ======================= 
                 -->
                 <div id="statistics-tab" class="tab-content hidden">
                     <h1 class="text-3xl font-bold text-navy mb-6">System Statistics</h1>
 
-                    <!-- Key Metrics -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Key Metrics (UPDATED) -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
                             <div class="p-3 rounded-full bg-blue-100 text-blue-600">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
                             </div>
                             <div>
-                                <div class="text-sm text-gray-500">Total Matches</div>
-                                <div id="stats-total-matches" class="text-3xl font-bold text-navy">0</div>
+                                <div class="text-sm text-gray-500">Total Predictions</div>
+                                <div id="stats-total-predictions" class="text-3xl font-bold text-navy">0</div>
                             </div>
                         </div>
                         <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
@@ -493,8 +581,8 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
                             <div>
-                                <div class="text-sm text-gray-500">Overall Accuracy</div>
-                                <div id="stats-accuracy" class="text-3xl font-bold text-emerald">0%</div>
+                                <div class="text-sm text-gray-500">Total Wins</div>
+                                <div id="stats-total-wins" class="text-3xl font-bold text-emerald">0</div>
                             </div>
                         </div>
                         <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
@@ -502,44 +590,41 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                             </div>
                             <div>
-                                <div class="text-sm text-gray-500">Top League</div>
-                                <div id="stats-top-league" class="text-2xl font-bold text-navy">N/A</div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4">
-                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.08-1.285-.237-1.887M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.08-1.285.237-1.887m0 0A5.002 5.002 0 0112 13a5 5 0 014.763 3.113M12 13v-1a3 3 0 10-6 0v1m6 0v-1a3 3 0 10-6 0v1m6 0A5.002 5.002 0 0112 13m0 0v-1a3 3 0 10-6 0v1m0 0A5.002 5.002 0 0112 13m0-3a3 3 0 100-6 3 3 0 000 6z" /></svg>
-                            </div>
-                            <div>
-                                <div class="text-sm text-gray-500">Top Team</div>
-                                <div id="stats-top-team" class="text-2xl font-bold text-navy">N/A</div>
+                                <div class="text-sm text-gray-500">Win Rate</div>
+                                <div id="stats-win-rate" class="text-3xl font-bold text-navy">0%</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Charts -->
+                    <!-- Charts (UPDATED) -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Pie Chart: Distribution -->
-                        <div class="lg:col-span-1 bg-white rounded-xl shadow-lg p-6">
-                            <h3 class="text-xl font-semibold text-navy mb-4">Prediction Distribution</h3>
-                            <canvas id="distribution-chart"></canvas>
+                        <!-- Chart 1: Prediction -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4 text-center">"Prediction" Field Stats</h3>
+                            <div class="chart-container">
+                                <canvas id="chart-prediction"></canvas>
+                            </div>
                         </div>
-                        <!-- Bar Chart: Performance by League -->
-                        <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                            <h3 class="text-xl font-semibold text-navy mb-4">Accuracy by League</h3>
-                            <canvas id="league-chart"></canvas>
+                        <!-- Chart 2: Predicted Outcome -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4 text-center">"Predicted Outcome" Field Stats</h3>
+                            <div class="chart-container">
+                                <canvas id="chart-predicted-outcome"></canvas>
+                            </div>
                         </div>
-                        <!-- Line Chart: Accuracy Over Time -->
-                        <div class="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
-                            <h3 class="text-xl font-semibold text-navy mb-4">Accuracy Over Time</h3>
-                            <canvas id="accuracy-chart"></canvas>
+                        <!-- Chart 3: Expected Outcome -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-semibold text-navy mb-4 text-center">"Expected Outcome" Field Stats</h3>
+                            <div class="chart-container">
+                                <canvas id="chart-expected-outcome"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 
                   =======================
-                  TAB: Admin
+                  TAB: Admin (Unchanged)
                   ======================= 
                 -->
                 <div id="admin-tab" class="tab-content hidden">
@@ -562,29 +647,6 @@
                                 </thead>
                                 <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
                                     <!-- Admin users list populated by JS -->
-                                    <!-- Example Row:
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">admin@example.com</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <select class="rounded-lg border-gray-300">
-                                                <option selected>Admin</option>
-                                                <option>Analyst</option>
-                                                <option>Standard User</option>
-                                            </select>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Active
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button class="text-emerald hover:text-navy">Save</button>
-                                            <button class="text-red-600 hover:text-red-900 ml-4">Deactivate</button>
-                                        </td>
-                                    </tr>
-                                    -->
                                 </tbody>
                             </table>
                         </div>
@@ -600,9 +662,9 @@
     <!-- MODALS                                                              -->
     <!-- =================================================================== -->
 
-    <!-- More Filters Modal -->
+    <!-- More Filters Modal (UPDATED) -->
     <div id="more-filters-modal" class="hidden fixed inset-0 z-30 bg-black bg-opacity-60 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl transform transition-all" role="dialog" aria-modal="true">
             <!-- Modal Header -->
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <h3 class="text-2xl font-semibold text-navy">Additional Filters</h3>
@@ -612,67 +674,84 @@
             </div>
             <!-- Modal Body -->
             <div class="p-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                    <!-- HTeam % - OV1.5 -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
+                    <!-- Hteam Avg Scored -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV1.5</label>
+                        <label class="block text-sm font-medium text-gray-700">H-Team Avg Scored</label>
                         <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-h-ov15-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-h-ov15-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-avg-scored-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-avg-scored-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
-                    <!-- ATeam % - OV1.5 -->
+                    <!-- Hteam Avg Conceded -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV1.5</label>
+                        <label class="block text-sm font-medium text-gray-700">H-Team Avg Conceded</label>
                         <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-a-ov15-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-a-ov15-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-avg-conceded-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-avg-conceded-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
-                    <!-- HTeam % - OV2.5 -->
+                    <!-- HTeam Power - Over 2.5 -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV2.5</label>
+                        <label class="block text-sm font-medium text-gray-700">H-Team Power OV2.5</label>
                         <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-h-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-h-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-power-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-power-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
-                    <!-- ATeam % - OV2.5 -->
+                    <!-- Ateam Avg Scored -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV2.5</label>
+                        <label class="block text-sm font-medium text-gray-700">A-Team Avg Scored</label>
                         <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-a-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-a-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-avg-scored-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-avg-scored-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
-                    <!-- HTeam % - OV3.5 -->
+                    <!-- Ateam Avg Conceded -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">HTeam % – OV3.5</label>
+                        <label class="block text-sm font-medium text-gray-700">A-Team Avg Conceded</label>
                         <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-h-ov35-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-h-ov35-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-avg-conceded-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-avg-conceded-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
-                    <!-- ATeam % - OV3.5 -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">ATeam % – OV3.5</label>
-                        <div class="flex space-x-2 mt-1">
-                            <input type="number" id="filter-a-ov35-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <input type="number" id="filter-a-ov35-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                        </div>
-                    </div>
-                    
                     <!-- ATeam Power - Over 2.5 -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">ATeam Power – Over 2.5</label>
+                        <label class="block text-sm font-medium text-gray-700">A-Team Power OV2.5</label>
                         <div class="flex space-x-2 mt-1">
                             <input type="number" id="filter-a-power-ov25-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                             <input type="number" id="filter-a-power-ov25-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                         </div>
                     </div>
+                    <!-- Home Team Power -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Home Team Power</g-label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-h-power-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-power-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- Away Team Power -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Away Team Power</g-label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-a-power-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-a-power-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
+                    <!-- Spacer -->
+                    <div></div> 
+                    <!-- HTeam Power - BTTS -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">H-Team Power BTTS</label>
+                        <div class="flex space-x-2 mt-1">
+                            <input type="number" id="filter-h-power-btts-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <input type="number" id="filter-h-power-btts-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                        </div>
+                    </div>
                     <!-- ATeam Power - BTTS -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">ATeam Power – BTTS</label>
+                        <label class="block text-sm font-medium text-gray-700">A-Team Power BTTS</label>
                         <div class="flex space-x-2 mt-1">
                             <input type="number" id="filter-a-power-btts-min" placeholder="Min" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                             <input type="number" id="filter-a-power-btts-max" placeholder="Max" class="w-1/2 rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
@@ -689,7 +768,7 @@
         </div>
     </div>
 
-    <!-- Match Details Modal -->
+    <!-- Match Details Modal (UPDATED) -->
     <div id="match-details-modal" class="hidden fixed inset-0 z-40 bg-black bg-opacity-60 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] transform transition-all flex flex-col" role="dialog" aria-modal="true">
             <!-- Modal Header -->
@@ -699,58 +778,27 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <!-- Modal Body -->
+            <!-- Modal Body (Simplified, no charts) -->
             <div class="p-6 overflow-y-auto">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Team Comparison -->
-                    <div class="md:col-span-2">
-                        <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                            <thead class="bg-gray-100">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Metric</th>
-                                    <th id="modal-home-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700">Home Team</th>
-                                    <th id="modal-away-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700">Away Team</th>
-                                </tr>
-                            </thead>
-                            <tbody id="modal-comparison-table" class="bg-white divide-y divide-gray-200">
-                                <!-- Data rows populated by JS -->
-                                <!-- Example:
-                                <tr>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-800">Final Score</td>
-                                    <td class="px-4 py-3 text-center text-sm font-bold text-lg text-navy">2</td>
-                                    <td class="px-4 py-3 text-center text-sm font-bold text-lg text-navy">1</td>
-                                </tr>
-                                <tr>
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-800">Form</td>
-                                    <td class="px-4 py-3 text-center text-sm text-gray-600">W-W-L-D-W</td>
-                                    <td class="px-4 py-3 text-center text-sm text-gray-600">L-W-W-D-L</td>
-                                </tr>
-                                -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- Gauges & Graphs -->
-                    <div class="space-y-6">
-                        <div class="bg-gray-50 rounded-lg p-4 text-center">
-                            <h4 class="text-lg font-semibold text-navy mb-2">Prediction Confidence</h4>
-                            <div class="w-48 h-48 mx-auto">
-                                <canvas id="modal-confidence-gauge"></canvas>
-                            </div>
-                        </div>
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <h4 class="text-lg font-semibold text-navy mb-2 text-center">Team Performance Trend</h4>
-                            <div class="h-40">
-                                <canvas id="modal-team-trend-graph"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Team Comparison Table -->
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 w-1/3">Metric</th>
+                            <th id="modal-home-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-1/3">Home Team</th>
+                            <th id="modal-away-team" class="px-4 py-3 text-center text-sm font-semibold text-gray-700 w-1/3">Away Team</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-comparison-table" class="bg-white divide-y divide-gray-200">
+                        <!-- Data rows populated by JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <!-- =================================================================== -->
-    <!-- JAVASCRIPT                                                          -->
+    <!-- JAVASCRIPT (Significantly updated)                                  -->
     <!-- =================================================================== -->
     <script type="module">
         // -------------------------------------------
@@ -772,15 +820,16 @@
             ref, 
             onValue,
             get,
-            set
+            set,
+            child
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // -------------------------------------------
         // Firebase Config & Initialization
         // -------------------------------------------
 
-        // Fallback config from your prompt, in case __firebase_config is not injected
-        const fallbackConfig = {
+        // Config from your prompt
+        const firebaseConfig = {
             apiKey: "AIzaSyB7P5UCzyp5dnMO0E81PQwp5esUDNFCKzg",
             authDomain: "datacompass360-3b5d9.firebaseapp.com",
             databaseURL: "https://datacompass360-3b5d9-default-rtdb.firebaseio.com",
@@ -791,40 +840,57 @@
             measurementId: "G-PSE21XN3KL"
         };
         
+        // Use injected config if available, otherwise fallback
         const firebaseConfigString = typeof __firebase_config !== 'undefined' 
             ? __firebase_config 
-            : JSON.stringify(fallbackConfig);
+            : JSON.stringify(firebaseConfig);
         
-        const firebaseConfig = JSON.parse(firebaseConfigString);
+        const effectiveConfig = JSON.parse(firebaseConfigString);
         
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp(effectiveConfig);
         const auth = getAuth(app);
         const db = getDatabase(app);
+        const dbRef = ref(db); // Root ref
 
         // -------------------------------------------
         // Global State
         // -------------------------------------------
-        let allMatchesData = [];    // Raw data from Firebase
+        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv";
+        // This is a list of all column names from the sheet that are expected to be numbers
+        const numericColumns = [
+            "Home Odds", "Draw Odds", "Away Odds", "Home Form Rate", "Away Form Rate",
+            "Confidence %", "Home Team Table Standing", "Away Team Table Standing",
+            "L5 H-Team Overall W", "L5 H-Team Home W", "L5 A-Team Overall W", "L5 A-Team Away W",
+            "HTeam % -OV1.5", "HTeam % -OV2.5", "HTeam % -OV3.5",
+            "ATeam % -OV1.5", "ATeam % -OV2.5", "ATeam % -OV3.5",
+            "Hteam Avg Scored", "Hteam Avg Conceded", "Ateam Avg Scored", "Ateam Avg Conceded",
+            "HTeam Power - Over 2.5", "HTeam Power - BTTS", "Home Team Power",
+            "ATeam Power - Over 2.5", "ATeam Power - BTTS", "Away Team Power",
+            "Predicted Probability (%)", "Probability Rate", "Goals to be Scored",
+            "Home Win", "Draw", "Away Win", "Home FT", "Away FT"
+        ];
+
+        let allMatchesData = [];    // Raw data from GSheet + Firebase
         let filteredMatches = [];   // Data after all filters
-        let selections = [];      // Array of selected match IDs
+        let selections = [];      // Array of selected MatchKey
         let currentUser = null;
         let currentUserRole = 'Standard User'; // Default role
         let currentPage = 1;
+        let hcCurrentPage = 1; // High Chance page
         const rowsPerPage = 30;
         let activeTab = 'all-matches';
         
         // Chart instances
         let charts = {
-            distribution: null,
-            league: null,
-            accuracy: null,
-            modalGauge: null,
-            modalTrend: null
+            prediction: null,
+            predictedOutcome: null,
+            expectedOutcome: null
         };
 
         // DOM Element Cache
         const dom = {
             loadingSpinner: document.getElementById('loading-spinner'),
+            loadingMessage: document.getElementById('loading-message'),
             loginPage: document.getElementById('login-page'),
             signupPage: document.getElementById('signup-page'),
             dashboardPage: document.getElementById('dashboard-page'),
@@ -850,6 +916,10 @@
             highChanceTableBody: document.getElementById('high-chance-table-body'),
             selectionsTableBody: document.getElementById('selections-table-body'),
             usersTableBody: document.getElementById('users-table-body'),
+            notification: {
+                popup: document.getElementById('notification-popup'),
+                message: document.getElementById('notification-message'),
+            },
             pagination: {
                 prev: document.getElementById('prev-page'),
                 next: document.getElementById('next-page'),
@@ -857,34 +927,57 @@
                 end: document.getElementById('page-info-end'),
                 total: document.getElementById('page-info-total'),
             },
+            hcPagination: {
+                container: document.getElementById('high-chance-pagination'),
+                prev: document.getElementById('hc-prev-page'),
+                next: document.getElementById('hc-next-page'),
+                start: document.getElementById('hc-page-info-start'),
+                end: document.getElementById('hc-page-info-end'),
+                total: document.getElementById('hc-page-info-total'),
+            },
             filters: {
+                // Main
                 league: document.getElementById('filter-league'),
-                confMin: document.getElementById('filter-conf-min'),
-                confMax: document.getElementById('filter-conf-max'),
+                date: document.getElementById('filter-date'),
+                correctScore: document.getElementById('filter-correct-score'),
+                recommendationTip: document.getElementById('filter-recommendation-tip'),
+                predGoalsMin: document.getElementById('filter-pred-goals-min'),
+                predGoalsMax: document.getElementById('filter-pred-goals-max'),
+                goalsScoredMin: document.getElementById('filter-goals-scored-min'),
+                goalsScoredMax: document.getElementById('filter-goals-scored-max'),
                 homePowerMin: document.getElementById('filter-home-power-min'),
                 homePowerMax: document.getElementById('filter-home-power-max'),
                 awayPowerMin: document.getElementById('filter-away-power-min'),
                 awayPowerMax: document.getElementById('filter-away-power-max'),
-                prediction: document.getElementById('filter-prediction'),
-                hOv15Min: document.getElementById('filter-h-ov15-min'),
-                hOv15Max: document.getElementById('filter-h-ov15-max'),
-                aOv15Min: document.getElementById('filter-a-ov15-min'),
-                aOv15Max: document.getElementById('filter-a-ov15-max'),
-                hOv25Min: document.getElementById('filter-h-ov25-min'),
-                hOv25Max: document.getElementById('filter-h-ov25-max'),
-                aOv25Min: document.getElementById('filter-a-ov25-min'),
-                aOv25Max: document.getElementById('filter-a-ov25-max'),
-                hOv35Min: document.getElementById('filter-h-ov35-min'),
-                hOv35Max: document.getElementById('filter-h-ov35-max'),
-                aOv35Min: document.getElementById('filter-a-ov35-min'),
-                aOv35Max: document.getElementById('filter-a-ov35-max'),
+                homeStandingMin: document.getElementById('filter-home-standing-min'),
+                homeStandingMax: document.getElementById('filter-home-standing-max'),
+                awayStandingMin: document.getElementById('filter-away-standing-min'),
+                awayStandingMax: document.getElementById('filter-away-standing-max'),
+                globalSearch: document.getElementById('global-search'),
+                // Modal
+                hAvgScoredMin: document.getElementById('filter-h-avg-scored-min'),
+                hAvgScoredMax: document.getElementById('filter-h-avg-scored-max'),
+                hAvgConcededMin: document.getElementById('filter-h-avg-conceded-min'),
+                hAvgConcededMax: document.getElementById('filter-h-avg-conceded-max'),
+                hPowerOv25Min: document.getElementById('filter-h-power-ov25-min'),
+                hPowerOv25Max: document.getElementById('filter-h-power-ov25-max'),
+                aAvgScoredMin: document.getElementById('filter-a-avg-scored-min'),
+                aAvgScoredMax: document.getElementById('filter-a-avg-scored-max'),
+                aAvgConcededMin: document.getElementById('filter-a-avg-conceded-min'),
+                aAvgConcededMax: document.getElementById('filter-a-avg-conceded-max'),
                 aPowerOv25Min: document.getElementById('filter-a-power-ov25-min'),
                 aPowerOv25Max: document.getElementById('filter-a-power-ov25-max'),
+                hPowerMin: document.getElementById('filter-h-power-min'),
+                hPowerMax: document.getElementById('filter-h-power-max'),
+                aPowerMin: document.getElementById('filter-a-power-min'),
+                aPowerMax: document.getElementById('filter-a-power-max'),
+                hPowerBttsMin: document.getElementById('filter-h-power-btts-min'),
+                hPowerBttsMax: document.getElementById('filter-h-power-btts-max'),
                 aPowerBttsMin: document.getElementById('filter-a-power-btts-min'),
                 aPowerBttsMax: document.getElementById('filter-a-power-btts-max'),
-                globalSearch: document.getElementById('global-search'),
             },
             filterButtons: {
+                pushToFirebase: document.getElementById('push-to-firebase-btn'),
                 moreFilters: document.getElementById('more-filters-button'),
                 closeMoreFilters: document.getElementById('close-more-filters-modal'),
                 applyMain: document.getElementById('apply-filters-main'),
@@ -902,26 +995,149 @@
                 comparisonTable: document.getElementById('modal-comparison-table'),
             },
             stats: {
-                totalMatches: document.getElementById('stats-total-matches'),
-                accuracy: document.getElementById('stats-accuracy'),
-                topLeague: document.getElementById('stats-top-league'),
-                topTeam: document.getElementById('stats-top-team'),
+                totalPredictions: document.getElementById('stats-total-predictions'),
+                totalWins: document.getElementById('stats-total-wins'),
+                winRate: document.getElementById('stats-win-rate'),
             },
             charts: {
-                distribution: document.getElementById('distribution-chart')?.getContext('2d'),
-                league: document.getElementById('league-chart')?.getContext('2d'),
-                accuracy: document.getElementById('accuracy-chart')?.getContext('2d'),
-                modalGauge: document.getElementById('modal-confidence-gauge')?.getContext('2d'),
-                modalTrend: document.getElementById('modal-team-trend-graph')?.getContext('2d'),
+                prediction: document.getElementById('chart-prediction')?.getContext('2d'),
+                predictedOutcome: document.getElementById('chart-predicted-outcome')?.getContext('2d'),
+                expectedOutcome: document.getElementById('chart-expected-outcome')?.getContext('2d'),
             },
             selections: {
+                saveBtn: document.getElementById('save-collection-btn'),
+                loadSelect: document.getElementById('load-collection-select'),
+                collectionName: document.getElementById('collection-name'),
                 exportCsv: document.getElementById('export-csv-btn'),
                 exportPdf: document.getElementById('export-pdf-btn'),
             }
         };
 
         // -------------------------------------------
-        // AUTHENTICATION
+        // UTILITY FUNCTIONS
+        // -------------------------------------------
+
+        /**
+         * Shows a notification popup.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' (green), 'error' (red), or 'info' (blue).
+         */
+        function showNotification(message, type = 'info') {
+            const popup = dom.notification.popup;
+            dom.notification.message.textContent = message;
+
+            // Remove old classes
+            popup.classList.remove('bg-emerald', 'bg-red-500', 'bg-blue-500', 'hidden');
+
+            if (type === 'success') {
+                popup.classList.add('bg-emerald');
+            } else if (type === 'error') {
+                popup.classList.add('bg-red-500');
+            } else {
+                popup.classList.add('bg-blue-500');
+            }
+
+            popup.classList.remove('hidden');
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                popup.classList.add('hidden');
+            }, 3000);
+        }
+
+        /**
+         * A simple CSV parser that handles quoted fields.
+         * @param {string} csvText - The raw CSV text.
+         * @returns {Array<Object>} An array of objects.
+         */
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = [];
+                let currentLine = lines[i];
+                let inQuote = false;
+                let value = '';
+
+                for (let j = 0; j < currentLine.length; j++) {
+                    const char = currentLine[j];
+
+                    if (char === '"') {
+                        inQuote = !inQuote;
+                    } else if (char === ',' && !inQuote) {
+                        values.push(value.trim());
+                        value = '';
+                    } else {
+                        value += char;
+                    }
+                }
+                values.push(value.trim()); // Add last value
+
+                if (values.length === headers.length) {
+                    const obj = {};
+                    for (let k = 0; k < headers.length; k++) {
+                        obj[headers[k]] = values[k];
+                    }
+                    data.push(obj);
+                }
+            }
+            return data;
+        }
+
+        /**
+         * Parses a match object from CSV (strings) into correct data types.
+         * @param {Object} row - A row object from parseCSV.
+         * @returns {Object} A row object with numbers parsed.
+         */
+        function parseMatchObject(row) {
+            const newRow = { ...row };
+            for (const col of numericColumns) {
+                if (newRow[col]) {
+                    const val = parseFloat(newRow[col]);
+                    newRow[col] = isNaN(val) ? null : val;
+                } else {
+                    newRow[col] = null;
+                }
+            }
+            // Ensure date is in YYYY-MM-DD format if possible
+            if (newRow.Date) {
+                 // Try to parse various date formats
+                 try {
+                    // Check for 'DD/MM/YYYY'
+                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(newRow.Date)) {
+                        const parts = newRow.Date.split('/');
+                        newRow.Date = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert to YYYY-MM-DD
+                    } else if (new Date(newRow.Date).toString() !== 'Invalid Date') {
+                        newRow.Date = new Date(newRow.Date).toISOString().split('T')[0];
+                    }
+                    // If it's already YYYY-MM-DD, it will pass
+                 } catch (e) {
+                     console.warn(`Invalid date format for ${newRow.MatchKey}: ${newRow.Date}`);
+                 }
+            }
+            return newRow;
+        }
+
+        /**
+         * Gets the match outcome (Home, Draw, Away) from a score string.
+         * @param {string} score - e.g., "2-1", "1-1", "0-3"
+         * @returns {string|null} "Home", "Draw", "Away", or null if invalid.
+         */
+        function getMatchOutcome(score) {
+            if (!score || !score.includes('-')) return null;
+            const parts = score.split('-').map(s => parseInt(s.trim()));
+            if (isNaN(parts[0]) || isNaN(parts[1])) return null;
+            
+            if (parts[0] > parts[1]) return "Home";
+            if (parts[0] < parts[1]) return "Away";
+            if (parts[0] === parts[1]) return "Draw";
+            return null;
+        }
+        
+        // -------------------------------------------
+        // AUTHENTICATION (Unchanged)
         // -------------------------------------------
 
         // Listen for auth state changes
@@ -929,15 +1145,14 @@
             if (user) {
                 currentUser = user;
                 dom.userEmailDisplay.textContent = user.email;
+                setLoadingMessage("Fetching user permissions...");
                 
                 // Fetch user role
                 try {
-                    const userRef = ref(db, 'users/' + user.uid);
-                    const snapshot = await get(userRef);
+                    const snapshot = await get(child(dbRef, 'users/' + user.uid));
                     if (snapshot.exists()) {
                         currentUserRole = snapshot.val().role || 'Standard User';
                     } else {
-                        // This might be a new user, role not set yet
                         currentUserRole = 'Standard User';
                     }
                 } catch (error) {
@@ -947,12 +1162,13 @@
                 
                 setupUIForRole(currentUserRole);
                 showPage('dashboard');
-                fetchMatchData(); // Fetch data only after login
+                await fetchMatchData(); // Fetch data only after login
+                await loadUserSelections(); // Load user's saved selections
             } else {
                 currentUser = null;
                 showPage('login');
+                dom.loadingSpinner.classList.add('hidden');
             }
-            dom.loadingSpinner.classList.add('hidden');
         });
 
         // Login Form Submission
@@ -966,9 +1182,6 @@
             setPersistence(auth, persistence)
                 .then(() => {
                     return signInWithEmailAndPassword(auth, email, password);
-                })
-                .then((userCredential) => {
-                    // Success, onAuthStateChanged will handle the rest
                 })
                 .catch((error) => {
                     dom.loginError.textContent = getFriendlyAuthError(error.code);
@@ -986,23 +1199,17 @@
 
             createUserWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
-                    // Signed in 
                     const user = userCredential.user;
-                    
-                    // Now, save user info to Realtime Database
-                    const userRef = ref(db, 'users/' + user.uid);
-                    set(userRef, {
+                    set(ref(db, 'users/' + user.uid), {
                         fullName: name,
                         email: email,
                         country: country,
-                        role: 'Standard User', // Default role
-                        status: 'Pending', // Or 'Active' if no approval needed
+                        role: 'Standard User',
+                        status: 'Active',
                         createdAt: new Date().toISOString()
-                    }).then(() => {
-                        // Success, onAuthStateChanged will handle UI switch
                     }).catch((dbError) => {
                         console.error("Error saving user data:", dbError);
-                        dom.signupError.textContent = "Account created, but failed to save user details.";
+                        showNotification("Account created, but failed to save user details.", "error");
                     });
                 })
                 .catch((error) => {
@@ -1025,6 +1232,10 @@
         // UI & NAVIGATION
         // -------------------------------------------
 
+        function setLoadingMessage(message) {
+            dom.loadingMessage.textContent = message;
+        }
+
         function showPage(pageId) {
             dom.loginPage.classList.add('hidden');
             dom.signupPage.classList.add('hidden');
@@ -1038,7 +1249,6 @@
         function setupUIForRole(role) {
             // Hide all restricted elements by default
             dom.adminNavButton.classList.add('hidden');
-            // Hide tabs
             const statsTabBtn = document.querySelector('.nav-tab-button[data-tab="statistics"]');
             const selectionsTabBtn = document.querySelector('.nav-tab-button[data-tab="selections"]');
             
@@ -1050,13 +1260,12 @@
                 dom.adminNavButton.classList.remove('hidden');
                 if (statsTabBtn) statsTabBtn.classList.remove('hidden');
                 if (selectionsTabBtn) selectionsTabBtn.classList.remove('hidden');
-                fetchAdminUsers(); // Load admin data
             } else if (role === 'Analyst') {
                 if (statsTabBtn) statsTabBtn.classList.remove('hidden');
                 if (selectionsTabBtn) selectionsTabBtn.classList.remove('hidden');
             } else {
                 // Standard User (All Matches + High Chance)
-                // They are visible by default, so nothing to remove
+                // They are visible by default
             }
             
             // Set default tab
@@ -1088,138 +1297,139 @@
             if (activeContent) activeContent.classList.remove('hidden');
             if (activeButton) activeButton.classList.add('active');
 
+            // Reset pagination and render
+            currentPage = 1;
+            hcCurrentPage = 1;
+            applyFiltersAndRender();
+
             // Special actions on tab switch
-            if (tabName === 'all-matches' || tabName === 'high-chance') {
-                applyFiltersAndRender();
-            } else if (tabName === 'selections') {
-                renderSelectionsTable();
-            } else if (tabName === 'statistics') {
+            if (tabName === 'statistics') {
                 renderStatistics();
             } else if (tabName === 'admin') {
                 fetchAdminUsers();
+            } else if (tabName === 'selections') {
+                renderSelectionsTable();
             }
         }
 
         // -------------------------------------------
-        // DATA FETCHING & PROCESSING
+        // DATA FETCHING & PROCESSING (REBUILT)
         // -------------------------------------------
         
-        function fetchMatchData() {
-            const predictionsRef = ref(db, 'predictions');
-            onValue(predictionsRef, (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    allMatchesData = Object.keys(data).map(key => {
-                        const matchData = data[key];
-                        
-                        // --- PARSING ---
-                        let successVal;
-                        if (matchData.Success === "true" || matchData.Success === true) successVal = true;
-                        else if (matchData.Success === "false" || matchData.Success === false) successVal = false;
-                        else successVal = undefined; // For "Pending"
-
-                        let dateVal = 'N/A';
-                        if (matchData.scrapedTimestamp) {
-                            dateVal = matchData.scrapedTimestamp.split('T')[0];
-                        } else if (matchData.MatchKey) {
-                            dateVal = matchData.MatchKey.split('|')[0]; // Fallback
+        async function fetchMatchData() {
+            setLoadingMessage("Fetching data from Firebase...");
+            dom.loadingSpinner.classList.remove('hidden');
+            let fbMatches = [];
+            let stagedKeys = new Set();
+            
+            try {
+                // 1. Fetch all staged data from Firebase
+                const snapshot = await get(child(dbRef, 'predictions'));
+                if (snapshot.exists()) {
+                    const fbData = snapshot.val();
+                    fbMatches = Object.keys(fbData).map(key => {
+                        // Data in FB is assumed to be already parsed
+                        const match = fbData[key];
+                        // Ensure MatchKey is present, use key if not
+                        if (!match.MatchKey) {
+                            match.MatchKey = key;
                         }
-
-                        let resultVal = matchData.Result || 'N/A';
-                        let homeScore = 'N/A', awayScore = 'N/A';
-                        if (resultVal && resultVal.includes('-')) {
-                            const scores = resultVal.split('-');
-                            homeScore = scores[0].trim();
-                            awayScore = scores[1].trim();
-                        }
-                        
-                        // --- MAPPING ---
-                        // Map Firebase keys (e.g., "Home Team") to app keys (e.g., "homeTeam")
-                        return {
-                            id: key,
-                            
-                            // 1. Keys for Main Table, Filters, Stats
-                            date: dateVal,
-                            league: matchData.League || 'N/A',
-                            homeTeam: matchData["Home Team"] || 'N/A',
-                            awayTeam: matchData["Away Team"] || 'N/A',
-                            homeOdds: matchData["Home Odds"] || 'N/A',
-                            drawOdds: matchData["Draw Odds"] || 'N/A',
-                            awayOdds: matchData["Away Odds"] || 'N/A',
-                            confidence: parseFloat(matchData.Confidence) || 0,
-                            analyzedPrediction: matchData.Prediction || 'N/A',
-                            result: resultVal,
-                            success: successVal,
-                            homePower: parseFloat(matchData["Home Team Power"]) || null,
-                            awayPower: parseFloat(matchData["Away Team Power"]) || null,
-
-                            // 2. Keys for Details Modal (must match 'metrics' array in openMatchDetailsModal)
-                            homeScore: homeScore,
-                            awayScore: awayScore,
-                            // Map special keys the modal expects
-                            Form: matchData["Home Form"] || 'N/A',
-                            HTeam_Form: matchData["Home Form"] || 'N/A',
-                            ATeam_Form: matchData["Away Form"] || 'N/A',
-                            FormRate: matchData["Home Form Rate"] || 'N/A',
-                            HTeam_FormRate: matchData["Home Form Rate"] || 'N/A',
-                            ATeam_FormRate: matchData["Away Form Rate"] || 'N/A',
-                            Confidence: parseFloat(matchData.Confidence) || 0,
-                            Prediction: matchData.Prediction || 'N/A',
-                            CorrectScore: matchData["Correct Score"] || 'N/A',
-                            TableStanding: matchData["Home Team Table Standing"] || 'N/A',
-                            HTeam_TableStanding: matchData["Home Team Table Standing"] || 'N/A',
-                            ATeam_TableStanding: matchData["Away Team Table Standing"] || 'N/A',
-                            Last5OverallWins: matchData["L5 H-Team Overall W"] || 'N/A',
-                            HTeam_Last5OverallWins: matchData["L5 H-Team Overall W"] || 'N/A',
-                            ATeam_Last5OverallWins: matchData["L5 A-Team Overall W"] || 'N/A',
-                            Last5HomeWins: matchData["L5 H-Team Home W"] || 'N/A',
-                            Last5AwayWins: matchData["L5 A-Team Away W"] || 'N/A',
-                            AvgScored: matchData["Hteam Avg Scored"] || 'N/A',
-                            HTeam_AvgScored: matchData["Hteam Avg Scored"] || 'N/A',
-                            ATeam_AvgScored: matchData["Ateam Avg Scored"] || 'N/A',
-                            AvgConceded: matchData["Hteam Avg Conceded"] || 'N/A',
-                            HTeam_AvgConceded: matchData["Hteam Avg Conceded"] || 'N/A',
-                            ATeam_AvgConceded: matchData["Ateam Avg Conceded"] || 'N/A',
-                            PowerOver25: matchData["HTeam Power - Over 2.5"] || 'N/A',
-                            HTeam_PowerOver25: matchData["HTeam Power - Over 2.5"] || 'N/A',
-                            ATeam_PowerOver25: matchData["ATeam Power - Over 2.5"] || 'N/A',
-                            PowerBTTS: matchData["HTeam Power - BTTS"] || 'N/A',
-                            HTeam_PowerBTTS: matchData["HTeam Power - BTTS"] || 'N/A',
-                            ATeam_PowerBTTS: matchData["ATeam Power - BTTS"] || 'N/A',
-
-                            // 3. Keys for 'More Filters' Modal
-                            HTeam_OV15: parseFloat(matchData["HTeam % - OV1.5"]) || null,
-                            ATeam_OV15: parseFloat(matchData["ATeam % - OV1.5"]) || null,
-                            HTeam_OV25: parseFloat(matchData["HTeam % - OV2.5"]) || null,
-                            ATeam_OV25: parseFloat(matchData["ATeam % - OV2.5"]) || null,
-                            HTeam_OV35: parseFloat(matchData["HTeam % - OV3.5"]) || null,
-                            ATeam_OV35: parseFloat(matchData["ATeam % - OV3.5"]) || null,
-                            ATeam_Power_Over25: parseFloat(matchData["ATeam Power - Over 2.5"]) || null,
-                            ATeam_Power_BTTS: parseFloat(matchData["ATeam Power - BTTS"]) || null,
-                        };
+                        return match;
                     });
-                    
-                    // Sort by date, newest first
-                    allMatchesData.sort((a, b) => new Date(b.date) - new Date(a.date));
-                    
-                    populateLeagueFilter();
-                    applyFiltersAndRender();
-                    if (activeTab === 'statistics') {
-                        renderStatistics();
-                    }
-                } else {
-                    allMatchesData = [];
-                    console.log("No data found at /predictions");
+                    stagedKeys = new Set(fbMatches.map(m => m.MatchKey));
+                    console.log(`Loaded ${fbMatches.length} matches from Firebase.`);
                 }
-                dom.loadingSpinner.classList.add('hidden');
-            }, (error) => {
+            } catch (error) {
                 console.error("Firebase Read Error:", error);
+                showNotification("Could not load data from Firebase.", "error");
+            }
+
+            setLoadingMessage("Fetching live data from Google Sheets...");
+            
+            try {
+                // 2. Fetch all data from Google Sheet
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                const sheetMatchesRaw = parseCSV(csvText);
+                console.log(`Loaded ${sheetMatchesRaw.length} rows from Google Sheet.`);
+
+                const sheetMatches = sheetMatchesRaw.map(parseMatchObject);
+                
+                const matchesToStage = [];
+                const nonStagedSheetMatches = [];
+
+                // 3. Compare, filter, and identify matches to auto-stage
+                for (const match of sheetMatches) {
+                    if (!match.MatchKey) {
+                        console.warn("Skipping row with no MatchKey:", match);
+                        continue;
+                    }
+                    
+                    const isStaged = stagedKeys.has(match.MatchKey);
+                    const hasResult = match["Match Result"] && !["N/A", "Pending", ""].includes(match["Match Result"]);
+
+                    if (hasResult && !isStaged) {
+                        // This match has a result and is not in Firebase. Stage it.
+                        match.Staged = true;
+                        matchesToStage.push(match);
+                    } else if (!isStaged) {
+                        // This match has no result and is not in Firebase. Add to main list.
+                        match.Staged = false;
+                        nonStagedSheetMatches.push(match);
+                    }
+                    // If isStaged is true, we do nothing; the Firebase version will be used.
+                }
+
+                // 4. Auto-stage new, completed matches
+                if (matchesToStage.length > 0) {
+                    setLoadingMessage(`Staging ${matchesToStage.length} new completed matches...`);
+                    console.log(`Auto-staging ${matchesToStage.length} matches.`);
+                    
+                    const stagingPromises = matchesToStage.map(match => {
+                        return set(ref(db, 'predictions/' + match.MatchKey), match);
+                    });
+                    await Promise.all(stagingPromises);
+                    
+                    // Add newly staged matches to our in-memory Firebase list
+                    fbMatches.push(...matchesToStage);
+                    console.log(`Staging complete.`);
+                }
+
+                // 5. Combine lists. Firebase data takes precedence.
+                allMatchesData = [...fbMatches, ...nonStagedSheetMatches];
+                
+                // Sort by date, newest first (assuming YYYY-MM-DD format)
+                allMatchesData.sort((a, b) => {
+                    const dateA = new Date(a.Date);
+                    const dateB = new Date(b.Date);
+                    if (dateA > dateB) return -1;
+                    if (dateA < dateB) return 1;
+                    return 0;
+                });
+                
+                populateLeagueFilter();
+                applyFiltersAndRender();
+                if (activeTab === 'statistics') {
+                    renderStatistics();
+                }
+
+            } catch (error) {
+                console.error("Google Sheet Fetch Error:", error);
+                showNotification("Could not load data from Google Sheets.", "error");
+                // If sheet fails, still show Firebase data
+                allMatchesData = fbMatches;
+                populateLeagueFilter();
+                applyFiltersAndRender();
+            } finally {
                 dom.loadingSpinner.classList.add('hidden');
-            });
+            }
         }
         
         function populateLeagueFilter() {
-            const leagues = [...new Set(allMatchesData.map(match => match.league))].sort();
+            const leagues = [...new Set(allMatchesData.map(match => match.League))].sort();
             dom.filters.league.innerHTML = '<option value="">All Leagues</option>'; // Reset
             leagues.forEach(league => {
                 if (league) {
@@ -1232,8 +1442,7 @@
         }
         
         function fetchAdminUsers() {
-            const usersRef = ref(db, 'users');
-            get(usersRef).then((snapshot) => {
+            get(child(dbRef, 'users')).then((snapshot) => {
                 if (snapshot.exists()) {
                     const users = snapshot.val();
                     renderUsersTable(users);
@@ -1242,36 +1451,127 @@
         }
 
         // -------------------------------------------
-        // FILTERING LOGIC
+        // SELECTION LOGIC (Save/Load)
+        // -------------------------------------------
+        
+        async function loadUserSelections() {
+            if (!currentUser) return;
+            setLoadingMessage("Loading saved selections...");
+            try {
+                const snapshot = await get(child(dbRef, `selections/${currentUser.uid}`));
+                if (snapshot.exists()) {
+                    const collections = snapshot.val();
+                    dom.selections.loadSelect.innerHTML = '<option value="">Load a collection...</option>';
+                    Object.keys(collections).forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        dom.selections.loadSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading collections:", error);
+                showNotification("Could not load saved selections.", "error");
+            }
+        }
+        
+        dom.selections.loadSelect.addEventListener('change', async (e) => {
+            const collectionName = e.target.value;
+            if (!collectionName || !currentUser) return;
+            
+            try {
+                const snapshot = await get(child(dbRef, `selections/${currentUser.uid}/${collectionName}`));
+                if (snapshot.exists()) {
+                    const collection = snapshot.val();
+                    selections = collection.matches || [];
+                    dom.selections.collectionName.value = collection.name;
+                    applyFiltersAndRender(); // Re-render all tables to show new selections
+                    renderSelectionsTable();
+                    showNotification(`Collection "${collectionName}" loaded.`, "success");
+                }
+            } catch (error) {
+                console.error("Error loading collection:", error);
+                showNotification("Could not load collection.", "error");
+            }
+        });
+        
+        dom.selections.saveBtn.addEventListener('click', async () => {
+            const collectionName = dom.selections.collectionName.value;
+            if (!collectionName) {
+                showNotification("Please enter a name for your collection.", "error");
+                return;
+            }
+            if (selections.length === 0) {
+                showNotification("No matches selected to save.", "info");
+                return;
+            }
+            if (!currentUser) {
+                showNotification("You must be logged in to save.", "error");
+                return;
+            }
+
+            const payload = { 
+                name: collectionName, 
+                matches: selections,
+                updatedAt: new Date().toISOString()
+            };
+            
+            try {
+                await set(ref(db, `selections/${currentUser.uid}/${collectionName}`), payload);
+                showNotification(`Collection "${collectionName}" saved.`, "success");
+                await loadUserSelections(); // Refresh dropdown
+                dom.selections.loadSelect.value = collectionName;
+            } catch (error) {
+                console.error("Error saving collection:", error);
+                showNotification("Failed to save collection.", "error");
+            }
+        });
+
+
+        // -------------------------------------------
+        // FILTERING LOGIC (UPDATED)
         // -------------------------------------------
 
         function applyFiltersAndRender() {
             // 1. Get all filter values
             const filters = {
+                // Main
                 league: dom.filters.league.value,
-                confMin: parseFloat(dom.filters.confMin.value) || null,
-                confMax: parseFloat(dom.filters.confMax.value) || null,
+                date: dom.filters.date.value,
+                correctScore: dom.filters.correctScore.value,
+                recommendationTip: dom.filters.recommendationTip.value,
+                predGoalsMin: parseFloat(dom.filters.predGoalsMin.value) || null,
+                predGoalsMax: parseFloat(dom.filters.predGoalsMax.value) || null,
+                goalsScoredMin: parseFloat(dom.filters.goalsScoredMin.value) || null,
+                goalsScoredMax: parseFloat(dom.filters.goalsScoredMax.value) || null,
                 homePowerMin: parseFloat(dom.filters.homePowerMin.value) || null,
                 homePowerMax: parseFloat(dom.filters.homePowerMax.value) || null,
                 awayPowerMin: parseFloat(dom.filters.awayPowerMin.value) || null,
                 awayPowerMax: parseFloat(dom.filters.awayPowerMax.value) || null,
-                prediction: dom.filters.prediction.value.toLowerCase(),
+                homeStandingMin: parseFloat(dom.filters.homeStandingMin.value) || null,
+                homeStandingMax: parseFloat(dom.filters.homeStandingMax.value) || null,
+                awayStandingMin: parseFloat(dom.filters.awayStandingMin.value) || null,
+                awayStandingMax: parseFloat(dom.filters.awayStandingMax.value) || null,
                 globalSearch: dom.filters.globalSearch.value.toLowerCase(),
-                // Modal filters
-                hOv15Min: parseFloat(dom.filters.hOv15Min.value) || null,
-                hOv15Max: parseFloat(dom.filters.hOv15Max.value) || null,
-                aOv15Min: parseFloat(dom.filters.aOv15Min.value) || null,
-                aOv15Max: parseFloat(dom.filters.aOv15Max.value) || null,
-                hOv25Min: parseFloat(dom.filters.hOv25Min.value) || null,
-                hOv25Max: parseFloat(dom.filters.hOv25Max.value) || null,
-                aOv25Min: parseFloat(dom.filters.aOv25Min.value) || null,
-                aOv25Max: parseFloat(dom.filters.aOv25Max.value) || null,
-                hOv35Min: parseFloat(dom.filters.hOv35Min.value) || null,
-                hOv35Max: parseFloat(dom.filters.hOv35Max.value) || null,
-                aOv35Min: parseFloat(dom.filters.aOv35Min.value) || null,
-                aOv35Max: parseFloat(dom.filters.aOv35Max.value) || null,
+                // Modal
+                hAvgScoredMin: parseFloat(dom.filters.hAvgScoredMin.value) || null,
+                hAvgScoredMax: parseFloat(dom.filters.hAvgScoredMax.value) || null,
+                hAvgConcededMin: parseFloat(dom.filters.hAvgConcededMin.value) || null,
+                hAvgConcededMax: parseFloat(dom.filters.hAvgConcededMax.value) || null,
+                hPowerOv25Min: parseFloat(dom.filters.hPowerOv25Min.value) || null,
+                hPowerOv25Max: parseFloat(dom.filters.hPowerOv25Max.value) || null,
+                aAvgScoredMin: parseFloat(dom.filters.aAvgScoredMin.value) || null,
+                aAvgScoredMax: parseFloat(dom.filters.aAvgScoredMax.value) || null,
+                aAvgConcededMin: parseFloat(dom.filters.aAvgConcededMin.value) || null,
+                aAvgConcededMax: parseFloat(dom.filters.aAvgConcededMax.value) || null,
                 aPowerOv25Min: parseFloat(dom.filters.aPowerOv25Min.value) || null,
                 aPowerOv25Max: parseFloat(dom.filters.aPowerOv25Max.value) || null,
+                hPowerMin: parseFloat(dom.filters.hPowerMin.value) || null,
+                hPowerMax: parseFloat(dom.filters.hPowerMax.value) || null,
+                aPowerMin: parseFloat(dom.filters.aPowerMin.value) || null,
+                aPowerMax: parseFloat(dom.filters.aPowerMax.value) || null,
+                hPowerBttsMin: parseFloat(dom.filters.hPowerBttsMin.value) || null,
+                hPowerBttsMax: parseFloat(dom.filters.hPowerBttsMax.value) || null,
                 aPowerBttsMin: parseFloat(dom.filters.aPowerBttsMin.value) || null,
                 aPowerBttsMax: parseFloat(dom.filters.aPowerBttsMax.value) || null,
             };
@@ -1281,83 +1581,97 @@
                 // Helper for min/max checks
                 const inRange = (val, min, max) => {
                     const numVal = parseFloat(val);
-                    if (isNaN(numVal)) return true; // Don't filter if value is not a number
+                    if (val === null || val === undefined || isNaN(numVal)) {
+                        // If filter is set, fail. If no filter, pass.
+                        return (min === null && max === null);
+                    }
                     const minPass = (min === null) || numVal >= min;
                     const maxPass = (max === null) || numVal <= max;
                     return minPass && maxPass;
                 };
 
+                // Helper for text checks
+                const textMatch = (val, filter) => {
+                    if (!filter) return true;
+                    return (val || '').toLowerCase().includes(filter.toLowerCase());
+                }
+
                 // Apply filters
-                if (filters.league && match.league !== filters.league) return false;
-                if (filters.prediction && !match.analyzedPrediction?.toLowerCase().includes(filters.prediction)) return false;
+                if (filters.league && match.League !== filters.league) return false;
+                if (filters.date && match.Date !== filters.date) return false;
+                if (!textMatch(match["Correct Score"], filters.correctScore)) return false;
+                if (!textMatch(match["Recommendation Tip"], filters.recommendationTip)) return false;
                 
                 if (filters.globalSearch) {
                     const search = filters.globalSearch;
-                    const home = match.homeTeam?.toLowerCase() || '';
-                    const away = match.awayTeam?.toLowerCase() || '';
-                    const league = match.league?.toLowerCase() || '';
-                    const date = match.date || '';
-                    if (!home.includes(search) && !away.includes(search) && !league.includes(search) && !date.includes(search)) return false;
+                    if (!textMatch(match["Home Team"], search) &&
+                        !textMatch(match["Away Team"], search) &&
+                        !textMatch(match.League, search) &&
+                        !textMatch(match.Date, search)) return false;
                 }
 
                 // Main Filters
-                if (!inRange(match.confidence, filters.confMin, filters.confMax)) return false;
-                if (!inRange(match.homePower, filters.homePowerMin, filters.homePowerMax)) return false;
-                if (!inRange(match.awayPower, filters.awayPowerMin, filters.awayPowerMax)) return false;
-
+                if (!inRange(match["Predicted Total Goals"], filters.predGoalsMin, filters.predGoalsMax)) return false;
+                if (!inRange(match["Goals to be Scored"], filters.goalsScoredMin, filters.goalsScoredMax)) return false;
+                if (!inRange(match["Home Team Power"], filters.homePowerMin, filters.homePowerMax)) return false;
+                if (!inRange(match["Away Team Power"], filters.awayPowerMin, filters.awayPowerMax)) return false;
+                if (!inRange(match["Home Team Table Standing"], filters.homeStandingMin, filters.homeStandingMax)) return false;
+                if (!inRange(match["Away Team Table Standing"], filters.awayStandingMin, filters.awayStandingMax)) return false;
+                
                 // Modal Filters
-                if (!inRange(match.HTeam_OV15, filters.hOv15Min, filters.hOv15Max)) return false;
-                if (!inRange(match.ATeam_OV15, filters.aOv15Min, filters.aOv15Max)) return false;
-                if (!inRange(match.HTeam_OV25, filters.hOv25Min, filters.hOv25Max)) return false;
-                if (!inRange(match.ATeam_OV25, filters.aOv25Min, filters.aOv25Max)) return false;
-                if (!inRange(match.HTeam_OV35, filters.hOv35Min, filters.hOv35Max)) return false;
-                if (!inRange(match.ATeam_OV35, filters.aOv35Min, filters.aOv35Max)) return false;
-                if (!inRange(match.ATeam_Power_Over25, filters.aPowerOv25Min, filters.aPowerOv25Max)) return false;
-                if (!inRange(match.ATeam_Power_BTTS, filters.aPowerBttsMin, filters.aPowerBttsMax)) return false;
+                if (!inRange(match["Hteam Avg Scored"], filters.hAvgScoredMin, filters.hAvgScoredMax)) return false;
+                if (!inRange(match["Hteam Avg Conceded"], filters.hAvgConcededMin, filters.hAvgConcededMax)) return false;
+                if (!inRange(match["HTeam Power - Over 2.5"], filters.hPowerOv25Min, filters.hPowerOv25Max)) return false;
+                if (!inRange(match["Ateam Avg Scored"], filters.aAvgScoredMin, filters.aAvgScoredMax)) return false;
+                if (!inRange(match["Ateam Avg Conceded"], filters.aAvgConcededMin, filters.aAvgConcededMax)) return false;
+                if (!inRange(match["ATeam Power - Over 2.5"], filters.aPowerOv25Min, filters.aPowerOv25Max)) return false;
+                if (!inRange(match["Home Team Power"], filters.hPowerMin, filters.hPowerMax)) return false;
+                if (!inRange(match["Away Team Power"], filters.aPowerMin, filters.aPowerMax)) return false;
+                if (!inRange(match["HTeam Power - BTTS"], filters.hPowerBttsMin, filters.hPowerBttsMax)) return false;
+                if (!inRange(match["ATeam Power - BTTS"], filters.aPowerBttsMin, filters.aPowerBttsMax)) return false;
                 
                 return true;
             });
             
-            // 3. Tab-specific filtering
+            // 3. Tab-specific filtering & rendering
             if (activeTab === 'high-chance') {
-                filteredMatches = filteredMatches.filter(m => m.confidence >= 65);
+                // Apply High Chance criteria
+                filteredMatches = filteredMatches.filter(m => 
+                    m["Confidence %"] >= 60 &&
+                    m["Predicted Probability (%)"] > 50 &&
+                    m["Probability Rate"] > 45
+                );
+                renderHighChanceTable();
+                dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
+                dom.hcPagination.container.classList.remove('hidden');
+            } else if (activeTab === 'all-matches') {
+                renderAllMatchesTable();
+                dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
+                dom.hcPagination.container.classList.add('hidden');
+            } else if (activeTab === 'selections') {
+                renderSelectionsTable();
+                dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
+                dom.hcPagination.container.classList.add('hidden');
             }
-
-            // 4. Reset pagination and render
-            currentPage = 1;
-            renderTables();
         }
 
         function resetAllFilters() {
             // Main filters
-            dom.filters.league.value = '';
-            dom.filters.confMin.value = '';
-            dom.filters.confMax.value = '';
-            dom.filters.homePowerMin.value = '';
-            dom.filters.homePowerMax.value = '';
-            dom.filters.awayPowerMin.value = '';
-            dom.filters.awayPowerMax.value = '';
-            dom.filters.prediction.value = '';
-            dom.filters.globalSearch.value = '';
+            const mainFilters = document.querySelector("#all-matches-tab .bg-white.rounded-xl.shadow-lg");
+            mainFilters.querySelectorAll('input, select').forEach(el => el.value = '');
             // Modal filters
-            dom.filters.hOv15Min.value = ''; dom.filters.hOv15Max.value = '';
-            dom.filters.aOv15Min.value = ''; dom.filters.aOv15Max.value = '';
-            dom.filters.hOv25Min.value = ''; dom.filters.hOv25Max.value = '';
-            dom.filters.aOv25Min.value = ''; dom.filters.aOv25Max.value = '';
-            dom.filters.hOv35Min.value = ''; dom.filters.hOv35Max.value = '';
-            dom.filters.aOv35Min.value = ''; dom.filters.aOv35Max.value = '';
-            dom.filters.aPowerOv25Min.value = ''; dom.filters.aPowerOv25Max.value = '';
-            dom.filters.aPowerBttsMin.value = ''; dom.filters.aPowerBttsMax.value = '';
+            dom.modals.moreFilters.querySelectorAll('input').forEach(el => el.value = '');
+            // Global search
+            dom.filters.globalSearch.value = '';
 
             applyFiltersAndRender();
         }
 
         // -------------------------------------------
-        // TABLE & LIST RENDERING
+        // TABLE & LIST RENDERING (UPDATED)
         // -------------------------------------------
 
-        function renderTables() {
-            // Paginate
+        function renderAllMatchesTable() {
             const totalMatches = filteredMatches.length;
             const startIndex = (currentPage - 1) * rowsPerPage;
             const endIndex = Math.min(startIndex + rowsPerPage, totalMatches);
@@ -1365,58 +1679,61 @@
 
             let tableHtml = '';
             paginatedMatches.forEach(match => {
-                tableHtml += createMatchRowHtml(match);
+                tableHtml += createMatchRowHtml(match, 'all-matches');
             });
 
-            // Render to the correct table body
-            if (activeTab === 'all-matches') {
-                dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
-                dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
-            } else if (activeTab === 'high-chance') {
-                dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
-                // High chance tab doesn't have pagination in this setup, but could.
-                // For simplicity, we'll hide pagination here, assuming it re-uses the `all-matches` filter logic.
-                // Or, let's just show it all. For this, I'll render *all* high-chance matches, not paginated.
-                
-                // Re-doing high-chance to not be paginated
-                if (activeTab === 'high-chance') {
-                    let highChanceHtml = '';
-                    filteredMatches.forEach(match => { // 'filteredMatches' is already filtered for high-chance
-                        highChanceHtml += createMatchRowHtml(match);
-                    });
-                     dom.highChanceTableBody.innerHTML = highChanceHtml || `<tr><td colspan="11" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
-                     // Hide pagination for this tab
-                     dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
-                }
-            }
+            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="18" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
             
-            // Update pagination controls (only for 'all-matches' tab)
-            if (activeTab === 'all-matches') {
-                dom.pagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
-                dom.pagination.end.textContent = endIndex;
-                dom.pagination.total.textContent = totalMatches;
-                dom.pagination.prev.disabled = (currentPage === 1);
-                dom.pagination.next.disabled = (endIndex === totalMatches);
-            }
+            // Update pagination
+            dom.pagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
+            dom.pagination.end.textContent = endIndex;
+            dom.pagination.total.textContent = totalMatches;
+            dom.pagination.prev.disabled = (currentPage === 1);
+            dom.pagination.next.disabled = (endIndex === totalMatches);
+        }
+
+        function renderHighChanceTable() {
+            const totalMatches = filteredMatches.length;
+            const startIndex = (hcCurrentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalMatches);
+            const paginatedMatches = filteredMatches.slice(startIndex, endIndex);
+
+            let tableHtml = '';
+            paginatedMatches.forEach(match => {
+                tableHtml += createMatchRowHtml(match, 'high-chance');
+            });
+
+            dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="12" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
+        
+            // Update high chance pagination
+            dom.hcPagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
+            dom.hcPagination.end.textContent = endIndex;
+            dom.hcPagination.total.textContent = totalMatches;
+            dom.hcPagination.prev.disabled = (hcCurrentPage === 1);
+            dom.hcPagination.next.disabled = (endIndex === totalMatches);
         }
         
         function renderSelectionsTable() {
             let tableHtml = '';
-            const selectedMatches = allMatchesData.filter(match => selections.includes(match.id));
+            // Find full match objects from `allMatchesData` using `selections` (which holds MatchKeys)
+            const selectedMatches = selections.map(key => allMatchesData.find(m => m.MatchKey === key)).filter(Boolean); // .filter(Boolean) removes undefined
             
             selectedMatches.forEach(match => {
+                const isStarred = (match.Prediction && match.Prediction === match["Predicted Outcome"] && match.Prediction === match["Expected Outcome"]);
+                const rowClass = getRowClass(match.Prediction, match["Match Result"]);
+
                 tableHtml += `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.date || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${match.league || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.homeTeam || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.awayTeam || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium" style="color: ${getConfidenceColor(match.confidence)}">${match.confidence || 0}%</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.analyzedPrediction || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match.result || 'N/A'}</td>
-                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                            <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-id="${match.id}">Delete</button>
-                            <button class="text-emerald hover:text-navy view-details-btn" data-match-id="${match.id}">View</button>
+                    <tr class="hover:bg-gray-50 ${rowClass}">
+                        <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 0}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                            <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-key="${match.MatchKey}">Delete</button>
+                            <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
                         </td>
                     </tr>
                 `;
@@ -1424,41 +1741,101 @@
             
             dom.selectionsTableBody.innerHTML = tableHtml || `<tr><td colspan="8" class="text-center p-6 text-gray-500">No matches selected.</td></tr>`;
         }
-
-        function createMatchRowHtml(match) {
-            const isSelected = selections.includes(match.id);
-            const odds = `${match.homeOdds || 'N/A'} / ${match.drawOdds || 'N/A'} / ${match.awayOdds || 'N/A'}`;
-            const success = match.success;
-            let successBadge;
-            if (success === true) {
-                successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span>`;
-            } else if (success === false) {
-                successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>`;
-            } else {
-                 successBadge = `<span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">Pending</span>`;
+        
+        // Conditional Formatting Helpers
+        function getRowClass(prediction, result) {
+            const actualOutcome = getMatchOutcome(result);
+            if (!actualOutcome || !prediction) {
+                return 'row-pending';
             }
+            // Normalize prediction (e.g., "Home Win" -> "Home")
+            let predOutcome = prediction.split(' ')[0]; 
+            if (predOutcome === actualOutcome) {
+                return 'row-success';
+            }
+            return 'row-fail';
+        }
+
+        function getPercentageClass(value) {
+            const val = parseFloat(value);
+            if (isNaN(val)) return '';
+            if (val >= 60) return 'bg-dark-green text-white';
+            if (val > 50) return 'bg-light-green text-black';
+            return '';
+        }
+
+        function createMatchRowHtml(match, tableType) {
+            const isSelected = selections.includes(match.MatchKey);
+            const isStarred = (match.Prediction && match.Prediction === match["Predicted Outcome"] && match.Prediction === match["Expected Outcome"]);
             
-            return `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-4 whitespace-nowrap">
-                        <input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-id="${match.id}" ${isSelected ? 'checked' : ''}>
-                    </td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.date || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${match.league || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.homeTeam || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match.awayTeam || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium" style="color: ${getConfidenceColor(match.confidence)}">
-                        ${match.confidence || 0}%
-                    </td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">${match.analyzedPrediction || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match.result || 'N/A'}</td>
-                    <td class="px-4 py-4 whitespace-nowrap">${successBadge}</td>
-                    <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                        <button class="text-emerald hover:text-navy view-details-btn" data-match-id="${match.id}">View Details</button>
-                    </td>
-                </tr>
-            `;
+            // Conditional Formatting
+            // Use 'Prediction' for main row, but check all 3 for 'any' success
+            const actualOutcome = getMatchOutcome(match["Match Result"]);
+            let rowClass = 'row-pending';
+            if(actualOutcome) {
+                 const predMatch = getMatchOutcome(match.Prediction) === actualOutcome;
+                 const predOutcomeMatch = getMatchOutcome(match["Predicted Outcome"]) === actualOutcome;
+                 const expOutcomeMatch = getMatchOutcome(match["Expected Outcome"]) === actualOutcome;
+                 
+                 if (predMatch || predOutcomeMatch || expOutcomeMatch) {
+                     rowClass = 'row-success';
+                 } else {
+                     rowClass = 'row-fail';
+                 }
+            }
+
+            const homeWinClass = getPercentageClass(match["Home Win"]);
+            const drawClass = getPercentageClass(match["Draw"]);
+            const awayWinClass = getPercentageClass(match["Away Win"]);
+            
+            const odds = `${match["Home Odds"] || 'N/A'} / ${match["Draw Odds"] || 'N/A'} / ${match["Away Odds"] || 'N/A'}`;
+            
+            // Different columns for different tables
+            if (tableType === 'all-matches') {
+                return `
+                    <tr class="${rowClass} hover:bg-gray-100">
+                        <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
+                        <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Correct Score"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Outcome"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Probability (%)"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Expected Outcome"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Probability Rate"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${homeWinClass}">${match["Home Win"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${drawClass}">${match["Draw"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${awayWinClass}">${match["Away Win"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
+                        </td>
+                    </tr>
+                `;
+            } else if (tableType === 'high-chance') {
+                 return `
+                    <tr class="${rowClass} hover:bg-gray-100">
+                        <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
+                        <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Correct Score"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Probability (%)"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Probability Rate"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
+                        </td>
+                    </tr>
+                `;
+            }
         }
         
         function renderUsersTable(users) {
@@ -1486,9 +1863,9 @@
                                 ${user.status || 'Active'}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                             <button data-user-id="${uid}" class="save-user-btn text-emerald hover:text-navy" ${isCurrentUser ? 'disabled' : ''}>Save</button>
-                            <button data-user-id="${uid}" class="deactivate-user-btn text-red-600 hover:text-red-900 ml-4" ${isCurrentUser ? 'disabled' : ''}>Deactivate</button>
+                            <button data-user-id="${uid}" class="deactivate-user-btn text-red-600 hover:text-red-900" ${isCurrentUser ? 'disabled' : ''}>Deactivate</button>
                         </td>
                     </tr>
                 `;
@@ -1497,192 +1874,110 @@
         }
 
         // -------------------------------------------
-        // STATISTICS & CHARTS
+        // STATISTICS & CHARTS (REBUILT)
         // -------------------------------------------
 
         function renderStatistics() {
-            if (!dom.charts.distribution || allMatchesData.length === 0) return;
-            
-            const totalMatches = allMatchesData.length;
-            const successfulMatches = allMatchesData.filter(m => m.success === true).length;
-            const accuracy = totalMatches > 0 ? (successfulMatches / allMatchesData.filter(m => m.success !== undefined).length * 100) : 0;
-
-            // Key Metrics
-            dom.stats.totalMatches.textContent = totalMatches;
-            dom.stats.accuracy.textContent = `${accuracy.toFixed(1)}%`;
-
-            // Prediction Distribution (Pie Chart)
-            const predictions = allMatchesData.map(m => m.analyzedPrediction);
-            const predCounts = predictions.reduce((acc, pred) => {
-                if (pred) {
-                    acc[pred] = (acc[pred] || 0) + 1;
-                }
-                return acc;
-            }, {});
-            if (charts.distribution) charts.distribution.destroy();
-            charts.distribution = new Chart(dom.charts.distribution, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(predCounts),
-                    datasets: [{
-                        data: Object.values(predCounts),
-                        backgroundColor: ['#001f3f', '#00A86B', '#FFD700', '#f56565', '#4299e1', '#9f7aea'],
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            // Accuracy by League (Bar Chart)
-            const leagueData = allMatchesData.reduce((acc, match) => {
-                if (!match.league) return acc;
-                if (!acc[match.league]) {
-                    acc[match.league] = { total: 0, success: 0 };
-                }
-                if (match.success !== undefined) {
-                    acc[match.league].total++;
-                    if (match.success) {
-                        acc[match.league].success++;
-                    }
-                }
-                return acc;
-            }, {});
-            
-            const sortedLeagues = Object.keys(leagueData)
-                .map(league => ({
-                    name: league,
-                    accuracy: leagueData[league].total > 0 ? (leagueData[league].success / leagueData[league].total) * 100 : 0
-                }))
-                .sort((a, b) => b.accuracy - a.accuracy);
-                
-            dom.stats.topLeague.textContent = sortedLeagues.length > 0 ? sortedLeagues[0].name : 'N/A';
-
-            if (charts.league) charts.league.destroy();
-            charts.league = new Chart(dom.charts.league, {
-                type: 'bar',
-                data: {
-                    labels: sortedLeagues.map(l => l.name).slice(0, 10), // Top 10
-                    datasets: [{
-                        label: 'Accuracy %',
-                        data: sortedLeagues.map(l => l.accuracy).slice(0, 10),
-                        backgroundColor: '#00A86B',
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-
-            // Accuracy Over Time (Line Chart)
-            const timeData = allMatchesData.reduce((acc, match) => {
-                const date = match.date.split('T')[0];
-                if (!acc[date]) {
-                    acc[date] = { total: 0, success: 0 };
-                }
-                if (match.success !== undefined) {
-                    acc[date].total++;
-                    if (match.success) acc[date].success++;
-                }
-                return acc;
-            }, {});
-            
-            const sortedDates = Object.keys(timeData).sort((a,b) => new Date(a) - new Date(b));
-            const dateLabels = sortedDates.slice(-30); // Last 30 days
-            const dateAcc = dateLabels.map(date => {
-                const day = timeData[date];
-                return day.total > 0 ? (day.success / day.total) * 100 : 0;
-            });
-            
-            if (charts.accuracy) charts.accuracy.destroy();
-            charts.accuracy = new Chart(dom.charts.accuracy, {
-                type: 'line',
-                data: {
-                    labels: dateLabels,
-                    datasets: [{
-                        label: 'Daily Accuracy %',
-                        data: dateAcc,
-                        borderColor: '#001f3f',
-                        backgroundColor: 'rgba(0, 31, 63, 0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
-            });
-            
-            // Top Team (just an example metric, logic can be complex)
-            // This is a placeholder, a real "top team" needs more definition
-            const homeTeams = allMatchesData.map(m => m.homeTeam);
-            if(homeTeams.length > 0) {
-                 const topTeam = homeTeams.sort((a,b) => homeTeams.filter(v => v===a).length - homeTeams.filter(v => v===b).length).pop();
-                 dom.stats.topTeam.textContent = topTeam;
+            if (!dom.charts.prediction || allMatchesData.length === 0) {
+                console.log("Charts context not found or no data.");
+                return;
             }
-        }
-        
-        function renderModalCharts(match) {
-            // Confidence Gauge
-            const confidence = match.confidence || 0;
-            const gaugeData = {
-                labels: ['Confidence', ''],
-                datasets: [{
-                    data: [confidence, 100 - confidence],
-                    backgroundColor: [getConfidenceColor(confidence), '#e5e7eb'],
-                    borderColor: ['#ffffff', '#ffffff'],
-                    borderWidth: 2,
-                    circumference: 180, // Half circle
-                    rotation: 270,      // Start at the bottom
-                }]
-            };
-            if (charts.modalGauge) charts.modalGauge.destroy();
-            charts.modalGauge = new Chart(dom.charts.modalGauge, {
-                type: 'doughnut',
-                data: gaugeData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
-                    },
-                    cutout: '70%'
-                }
-            });
-            // Add text in middle (Chart.js doesn't do this natively)
-            // This is a bit of a hack, but works
             
-            // Team Trend
-            // Mock data as the data structure for trends isn't defined
-            const homeTrend = (match.homeForm || 'W-L-D-W-W').split('-').map(r => r === 'W' ? 3 : (r === 'D' ? 1 : 0));
-            const awayTrend = (match.awayForm || 'L-W-L-D-L').split('-').map(r => r === 'W' ? 3 : (r === 'D' ? 1 : 0));
+            // Helper function to process stats for one prediction field
+            const getStatsForField = (fieldName) => {
+                let stats = {
+                    Home: { total: 0, wins: 0 },
+                    Draw: { total: 0, wins: 0 },
+                    Away: { total: 0, wins: 0 },
+                    Other: { total: 0, wins: 0 },
+                    totalWins: 0,
+                    totalCount: 0
+                };
+                
+                allMatchesData.forEach(match => {
+                    const actualOutcome = getMatchOutcome(match["Match Result"]);
+                    let prediction = match[fieldName];
+                    
+                    if (!actualOutcome || !prediction) {
+                        return; // Skip matches without result or prediction
+                    }
 
-            if (charts.modalTrend) charts.modalTrend.destroy();
-            charts.modalTrend = new Chart(dom.charts.modalTrend, {
-                type: 'line',
-                data: {
-                    labels: ['G1', 'G2', 'G3', 'G4', 'G5'],
-                    datasets: [
-                        {
-                            label: match.homeTeam,
-                            data: homeTrend,
-                            borderColor: '#00A86B',
-                            tension: 0.1
-                        },
-                        {
-                            label: match.awayTeam,
-                            data: awayTrend,
-                            borderColor: '#001f3f',
-                            tension: 0.1
+                    stats.totalCount++;
+                    
+                    // Normalize prediction
+                    let predOutcome = "Other";
+                    if (prediction.toLowerCase().includes('home')) predOutcome = "Home";
+                    else if (prediction.toLowerCase().includes('draw')) predOutcome = "Draw";
+                    else if (prediction.toLowerCase().includes('away')) predOutcome = "Away";
+
+                    stats[predOutcome].total++;
+                    
+                    if (predOutcome === actualOutcome) {
+                        stats[predOutcome].wins++;
+                        stats.totalWins++;
+                    }
+                });
+                return stats;
+            };
+
+            // 1. Get stats for "Prediction" field for the main cards
+            const mainStats = getStatsForField("Prediction");
+            const winRate = mainStats.totalCount > 0 ? (mainStats.totalWins / mainStats.totalCount * 100) : 0;
+            
+            dom.stats.totalPredictions.textContent = mainStats.totalCount;
+            dom.stats.totalWins.textContent = mainStats.totalWins;
+            dom.stats.winRate.textContent = `${winRate.toFixed(1)}%`;
+
+            // 2. Create helper to render charts
+            const renderBarChart = (ctx, chartInstance, fieldName) => {
+                const stats = getStatsForField(fieldName);
+                const labels = ["Home", "Draw", "Away", "Other"];
+                const totalData = labels.map(l => stats[l].total);
+                const winsData = labels.map(l => stats[l].wins);
+
+                if (chartInstance) chartInstance.destroy();
+                
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Total Predictions',
+                                data: totalData,
+                                backgroundColor: 'rgba(0, 31, 63, 0.6)', // Navy
+                                borderColor: 'rgba(0, 31, 63, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Total Wins',
+                                data: winsData,
+                                backgroundColor: 'rgba(0, 168, 107, 0.6)', // Emerald
+                                borderColor: 'rgba(0, 168, 107, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
                         }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        }
+                    }
+                });
+            };
 
+            // 3. Render all 3 charts
+            charts.prediction = renderBarChart(dom.charts.prediction, charts.prediction, "Prediction");
+            charts.predictedOutcome = renderBarChart(dom.charts.predictedOutcome, charts.predictedOutcome, "Predicted Outcome");
+            charts.expectedOutcome = renderBarChart(dom.charts.expectedOutcome, charts.expectedOutcome, "Expected Outcome");
+        }
 
         // -------------------------------------------
-        // MODAL LOGIC
+        // MODAL LOGIC (UPDATED)
         // -------------------------------------------
         
         function openModal(modal) {
@@ -1693,67 +1988,64 @@
             modal.classList.add('hidden');
         }
         
-        function openMatchDetailsModal(matchId) {
-            const match = allMatchesData.find(m => m.id === matchId);
-            if (!match) return;
+        function openMatchDetailsModal(matchKey) {
+            const match = allMatchesData.find(m => m.MatchKey === matchKey);
+            if (!match) {
+                showNotification("Error: Could not find match details.", "error");
+                return;
+            }
             
-            dom.modals.matchTitle.textContent = `${match.homeTeam} vs ${match.awayTeam}`;
-            dom.modals.homeTeam.textContent = match.homeTeam;
-            dom.modals.awayTeam.textContent = match.awayTeam;
+            dom.modals.matchTitle.textContent = `${match["Home Team"]} vs ${match["Away Team"]}`;
+            dom.modals.homeTeam.textContent = match["Home Team"];
+            dom.modals.awayTeam.textContent = match["Away Team"];
             
-            // Define metrics to show
+            // Define metrics to show as per spec
             const metrics = [
-                { key: 'result', label: 'Final Score', homeKey: 'homeScore', awayKey: 'awayScore', bold: true }, // Assumes 'result' is like "2-1"
-                { key: 'Form', label: 'Form', bold: false},
-                { key: 'FormRate', label: 'Form Rate', bold: false},
-                { key: 'Confidence', label: 'Confidence', bold: true},
-                { key: 'Prediction', label: 'Prediction', bold: false},
-                { key: 'CorrectScore', label: 'Correct Score', bold: false},
-                { key: 'TableStanding', label: 'Table Standing', bold: false},
-                { key: 'Last5OverallWins', label: 'Last 5 Overall Wins', bold: false},
-                { key: 'Last5HomeAwayWins', label: 'Last 5 Home/Away Wins', homeKey: 'Last5HomeWins', awayKey: 'Last5AwayWins', bold: false},
-                { key: 'AvgScored', label: 'Avg Scored', bold: false},
-                { key: 'AvgConceded', label: 'Avg Conceded', bold: false},
-                { key: 'PowerOver25', label: 'Power – Over 2.5', bold: false},
-                { key: 'PowerBTTS', label: 'Power – BTTS', bold: false},
+                { label: 'Match Result', homeKey: 'Home FT', awayKey: 'Away FT', bold: true },
+                { label: 'Home Form', homeKey: 'Home Form', awayKey: 'Away Form' },
+                { label: 'Form Rate', homeKey: 'Home Form Rate', awayKey: 'Away Form Rate' },
+                { label: 'L5 Home/Away Wins', homeKey: 'L5 H-Team Home W', awayKey: 'L5 A-Team Away W' },
+                { label: 'Avg Scored', homeKey: 'Hteam Avg Scored', awayKey: 'Ateam Avg Scored' },
+                { label: 'Avg Conceded', homeKey: 'Hteam Avg Conceded', awayKey: 'Ateam Avg Conceded' },
+                { label: '% OV1.5', homeKey: 'HTeam % -OV1.5', awayKey: 'ATeam % -OV1.5' },
+                { label: '% OV2.5', homeKey: 'HTeam % -OV2.5', awayKey: 'ATeam % -OV2.5' },
+                { label: '% OV3.5', homeKey: 'HTeam % -OV3.5', awayKey: 'ATeam % -OV3.5' },
+                { label: 'Power - Over 2.5', homeKey: 'HTeam Power - Over 2.5', awayKey: 'ATeam Power - Over 2.5' },
+                { label: 'Power - BTTS', homeKey: 'HTeam Power - BTTS', awayKey: 'ATeam Power - BTTS' },
+                { label: 'Confidence %', singleKey: 'Confidence %' },
+                { label: 'Correct Score', singleKey: 'Correct Score' },
+                { label: 'Match URL', singleKey: 'Match URL' },
             ];
             
             let tableHtml = '';
             metrics.forEach(metric => {
-                let homeVal, awayVal;
+                let homeVal = 'N/A';
+                let awayVal = 'N/A';
                 
-                if (metric.key === 'result' && match.result) {
-                    const scores = match.result.split('-');
-                    homeVal = scores[0] || 'N/A';
-                    awayVal = scores[1] || 'N/A';
+                if (metric.singleKey) {
+                    homeVal = match[metric.singleKey] || 'N/A';
+                    if (metric.label === 'Match URL' && homeVal !== 'N/A') {
+                        homeVal = `<a href="${homeVal}" target="_blank" class="text-blue-600 hover:underline">View Match</a>`;
+                    }
+                    awayVal = '---'; // Use a dash for single-value metrics
                 } else {
-                    homeVal = match[metric.homeKey || `HTeam_${metric.key}`] || match[metric.key] || 'N/A';
-                    awayVal = match[metric.awayKey || `ATeam_${metric.key}`] || match[metric.key] || 'N/A';
+                    homeVal = match[metric.homeKey] !== null ? match[metric.homeKey] : 'N/A';
+                    awayVal = match[metric.awayKey] !== null ? match[metric.awayKey] : 'N/A';
                 }
-
-                // Special handling for single-value metrics
-                if (['Confidence', 'Prediction', 'CorrectScore'].includes(metric.key)) {
-                    awayVal = 'N/A'; // Or show same value
-                }
-                if (metric.key === 'Confidence') homeVal = `${homeVal}%`;
+                
+                const boldClass = metric.bold ? 'font-bold text-lg text-navy' : 'text-gray-600';
                 
                 tableHtml += `
-                    <tr class="${metric.bold ? 'font-bold' : ''}">
+                    <tr class="${metric.bold ? 'font-semibold' : ''}">
                         <td class="px-4 py-3 text-sm ${metric.bold ? 'text-gray-900' : 'text-gray-700'}">${metric.label}</td>
-                        <td class="px-4 py-3 text-center text-sm ${metric.bold ? 'text-lg text-navy' : 'text-gray-600'}">${homeVal}</td>
-                        <td class="px-4 py-3 text-center text-sm ${metric.bold ? 'text-lg text-navy' : 'text-gray-600'}">${awayVal}</td>
+                        <td class="px-4 py-3 text-center text-sm ${boldClass}">${homeVal}</td>
+                        <td class="px-4 py-3 text-center text-sm ${boldClass}">${awayVal}</td>
                     </tr>
                 `;
             });
             
             dom.modals.comparisonTable.innerHTML = tableHtml;
-            
             openModal(dom.modals.matchDetails);
-            
-            // Render charts *after* modal is visible
-            setTimeout(() => {
-                renderModalCharts(match);
-            }, 100);
         }
 
         // -------------------------------------------
@@ -1769,71 +2061,103 @@
             closeModal(dom.modals.moreFilters);
         });
         dom.filterButtons.resetMain.addEventListener('click', resetAllFilters);
-        dom.filterButtons.resetModal.addEventListener('click', resetAllFilters);
+        dom.filterButtons.resetModal.addEventListener('click', () => {
+             dom.modals.moreFilters.querySelectorAll('input').forEach(el => el.value = '');
+             // Need to also reset the modal-mirror filters in the main section
+             dom.filters.hPowerMin.value = ''; dom.filters.hPowerMax.value = '';
+             dom.filters.aPowerMin.value = ''; dom.filters.aPowerMax.value = '';
+             applyFiltersAndRender();
+        });
         dom.filters.globalSearch.addEventListener('input', applyFiltersAndRender);
         
+        // Manual Push to Firebase
+        dom.filterButtons.pushToFirebase.addEventListener('click', async () => {
+            if (selections.length === 0) {
+                showNotification("No matches selected to push.", "info");
+                return;
+            }
+            
+            setLoadingMessage(`Pushing ${selections.length} matches to Firebase...`);
+            dom.loadingSpinner.classList.remove('hidden');
+            
+            let successCount = 0;
+            const pushPromises = selections.map(async (matchKey) => {
+                const match = allMatchesData.find(m => m.MatchKey === matchKey);
+                if (match) {
+                    try {
+                        match.Staged = true; // Mark as manually staged
+                        await set(ref(db, 'predictions/' + match.MatchKey), match);
+                        successCount++;
+                    } catch (error) {
+                        console.error(`Failed to push ${matchKey}:`, error);
+                    }
+                }
+            });
+            
+            await Promise.all(pushPromises);
+            
+            dom.loadingSpinner.classList.add('hidden');
+            showNotification(`Successfully pushed ${successCount} out of ${selections.length} matches.`, "success");
+            
+            // Clear selections after pushing
+            selections = [];
+            applyFiltersAndRender(); // Re-render to clear checkboxes
+        });
+
         // Pagination
         dom.pagination.prev.addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
-                renderTables();
+                renderAllMatchesTable();
             }
         });
         dom.pagination.next.addEventListener('click', () => {
             const totalMatches = filteredMatches.length;
             if (currentPage * rowsPerPage < totalMatches) {
                 currentPage++;
-                renderTables();
+                renderAllMatchesTable();
             }
         });
         
-        // Dynamic Table Clicks (All Matches)
-        dom.matchesTableBody.addEventListener('click', (e) => {
+        // High Chance Pagination
+        dom.hcPagination.prev.addEventListener('click', () => {
+            if (hcCurrentPage > 1) {
+                hcCurrentPage--;
+                renderHighChanceTable();
+            }
+        });
+        dom.hcPagination.next.addEventListener('click', () => {
+            const totalMatches = filteredMatches.length; // 'filteredMatches' is already HC-filtered here
+            if (hcCurrentPage * rowsPerPage < totalMatches) {
+                hcCurrentPage++;
+                renderHighChanceTable();
+            }
+        });
+        
+        // Dynamic Table Clicks (using event delegation on parent)
+        document.getElementById('dashboard-page').addEventListener('click', (e) => {
+            // View Details Button
             const viewBtn = e.target.closest('.view-details-btn');
             if (viewBtn) {
-                openMatchDetailsModal(viewBtn.dataset.matchId);
+                openMatchDetailsModal(viewBtn.dataset.matchKey);
                 return;
             }
             
+            // Select Checkbox
             const selectBox = e.target.closest('.select-match-checkbox');
             if (selectBox) {
-                toggleSelection(selectBox.dataset.matchId, selectBox.checked);
+                toggleSelection(selectBox.dataset.matchKey, selectBox.checked);
                 return;
             }
-        });
-        
-        // Dynamic Table Clicks (High Chance)
-        dom.highChanceTableBody.addEventListener('click', (e) => {
-            const viewBtn = e.target.closest('.view-details-btn');
-            if (viewBtn) {
-                openMatchDetailsModal(viewBtn.dataset.matchId);
-                return;
-            }
-            
-            const selectBox = e.target.closest('.select-match-checkbox');
-            if (selectBox) {
-                toggleSelection(selectBox.dataset.matchId, selectBox.checked);
-                return;
-            }
-        });
-        
-        // Dynamic Table Clicks (Selections)
-        dom.selectionsTableBody.addEventListener('click', (e) => {
-            const viewBtn = e.target.closest('.view-details-btn');
-            if (viewBtn) {
-                openMatchDetailsModal(viewBtn.dataset.matchId);
-                return;
-            }
-            
+
+            // Remove from Selections Button
             const removeBtn = e.target.closest('.remove-selection-btn');
             if (removeBtn) {
-                toggleSelection(removeBtn.dataset.matchId, false);
+                toggleSelection(removeBtn.dataset.matchKey, false);
                 return;
             }
-        });
-        
-        // Dynamic Table Clicks (Admin Users)
-        dom.usersTableBody.addEventListener('click', (e) => {
+
+            // Admin: Save User Role
             const saveBtn = e.target.closest('.save-user-btn');
             if (saveBtn) {
                 const userId = saveBtn.dataset.userId;
@@ -1843,8 +2167,14 @@
                 }
                 return;
             }
-            
-            // Add deactivate logic here if needed
+
+            // Admin: Deactivate User
+            const deactivateBtn = e.target.closest('.deactivate-user-btn');
+            if(deactivateBtn) {
+                // Placeholder: In a real app, this would be a complex action
+                showNotification("Deactivation logic not implemented.", "info");
+                return;
+            }
         });
         
         // Close Modals
@@ -1873,26 +2203,19 @@
             }
         }
         
-        function getConfidenceColor(confidence) {
-            if (confidence >= 75) return '#00A86B'; // Emerald
-            if (confidence >= 65) return '#FFD700'; // Gold
-            if (confidence >= 50) return '#001f3f'; // Navy
-            return '#ef4444'; // Red
-        }
-        
-        function toggleSelection(matchId, isSelected) {
+        function toggleSelection(matchKey, isSelected) {
             if (isSelected) {
-                if (!selections.includes(matchId)) {
-                    selections.push(matchId);
+                if (!selections.includes(matchKey)) {
+                    selections.push(matchKey);
                 }
             } else {
-                selections = selections.filter(id => id !== matchId);
+                selections = selections.filter(id => id !== matchKey);
             }
             
             // Re-render relevant tables
             if (activeTab === 'all-matches' || activeTab === 'high-chance') {
                 // Find the checkbox and update its state (no full re-render needed)
-                const checkbox = document.querySelector(`.select-match-checkbox[data-match-id="${matchId}"]`);
+                const checkbox = document.querySelector(`.select-match-checkbox[data-match-key="${matchKey}"]`);
                 if (checkbox) checkbox.checked = isSelected;
             } else if (activeTab === 'selections') {
                 renderSelectionsTable(); // Re-render selections list
@@ -1900,32 +2223,37 @@
         }
         
         function updateUserRole(userId, newRole) {
-            const userRoleRef = ref(db, `users/${userId}/role`);
-            set(userRoleRef, newRole)
+            set(ref(db, `users/${userId}/role`), newRole)
                 .then(() => {
-                    console.log(`User ${userId} role updated to ${newRole}`);
-                    // You could show a small success message here
+                    showNotification(`User role updated to ${newRole}`, "success");
                 })
-                .catch(error => console.error("Failed to update user role:", error));
+                .catch(error => {
+                    console.error("Failed to update user role:", error);
+                    showNotification("Failed to update user role.", "error");
+                });
         }
         
         function exportSelectionsToCSV() {
-            const selectedMatches = allMatchesData.filter(match => selections.includes(match.id));
+            const selectedMatches = selections.map(key => allMatchesData.find(m => m.MatchKey === key)).filter(Boolean);
             if (selectedMatches.length === 0) {
-                alert("No matches selected to export."); // Using alert as a placeholder, replace with modal
+                showNotification("No matches selected to export.", "info");
                 return;
             }
             
-            const headers = "Date,League,HomeTeam,AwayTeam,Prediction,Confidence,Result,Success";
+            // Use all headers from the new table
+            const headers = [
+                "Date", "Home Team", "Away Team", "Home Odds", "Draw Odds", "Away Odds",
+                "Correct Score", "Prediction", "Confidence %", "Predicted Outcome",
+                "Predicted Probability (%)", "Expected Outcome", "Probability Rate", "Match Result",
+                "Home Win", "Draw", "Away Win", "MatchKey"
+            ];
+            
             const rows = selectedMatches.map(m => {
-                return [
-                    m.date, m.league, m.homeTeam, m.awayTeam,
-                    m.analyzedPrediction, m.confidence, m.result, m.success
-                ].join(',');
+                return headers.map(header => `"${m[header] || ''}"`).join(',');
             });
             
             const csvContent = "data:text/csv;charset=utf-8," 
-                + headers + "\n" 
+                + headers.join(',') + "\n" 
                 + rows.join("\n");
                 
             const encodedUri = encodeURI(csvContent);
@@ -1941,5 +2269,3 @@
 
 </body>
 </html>
-
-
