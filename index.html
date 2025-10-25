@@ -2292,7 +2292,8 @@
 /* ======= Sanitization and Safe Firebase Write ======= */
 
 
-;
+function sanitizeObject(obj) {
+  const cleanObj = {};
   for (const [key, value] of Object.entries(obj)) {
     const cleanKey = sanitizeKey(key);
     if (!cleanKey) continue;
@@ -2304,6 +2305,7 @@
   }
   return cleanObj;
 }
+
 
 |${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
     const safeMatchKey = sanitizeKey(matchKeyRaw);
