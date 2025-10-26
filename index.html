@@ -9,8 +9,6 @@
     <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
 
     <!-- 1. Tailwind CSS -->
-    <!-- Note: The 'cdn.tailwindcss.com should not be used in production' warning is expected. -->
-    <!-- Using the CDN is perfectly fine for development and testing like this. -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. Chart.js for Statistics -->
@@ -96,6 +94,7 @@
             -moz-appearance: textfield;
         }
         /* Custom styles for conditional formatting */
+        /* REQ 5: This logic is now handled in JS, but we keep the base classes */
         .row-success {
             background-color: #e8f5e9 !important; /* Light green for success */
         }
@@ -231,7 +230,7 @@
     <!-- DASHBOARD PAGE                                                      -->
     <!-- =================================================================== -->
     <div id="dashboard-page" class="hidden h-screen flex flex-col">
-        <!-- Header (Unchanged) -->
+        <!-- REQ 7: Header Updated -->
         <header class="bg-navy text-white shadow-lg flex items-center justify-between px-6 py-3 z-10">
             <div class="flex items-center space-x-3">
                 <!-- Logo with Pulse -->
@@ -254,6 +253,14 @@
                     </svg>
                 </div>
             </div>
+
+            <!-- REQ 7: Push to Firebase (Moved) -->
+            <button id="push-to-firebase-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md flex items-center space-x-2 transition duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>Push Selected</span>
+            </button>
 
             <!-- User Menu (Unchanged) -->
             <div class="flex items-center space-x-4">
@@ -303,18 +310,10 @@
                   ======================= 
                 -->
                 <div id="all-matches-tab" class="tab-content">
-                    <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
-                        <h1 class="text-3xl font-bold text-navy">All Matches</h1>
-                        <button id="push-to-firebase-btn" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md flex items-center space-x-2 transition duration-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                            </svg>
-                            <span>Push Selected to Firebase</span>
-                        </button>
-                    </div>
+                    <!-- REQ 7: Title and Button DIV removed -->
                     
-                    <!-- Main Filters (UPDATED) -->
-                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
+                    <!-- REQ 7: Main Filters (Moved up) -->
+                    <div class="bg-white rounded-xl shadow-lg p-5">
                         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <!-- League -->
                             <div>
@@ -324,10 +323,13 @@
                                     <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <!-- Date -->
+                            <!-- REQ 1: Date Dropdown -->
                             <div>
                                 <label for="filter-date" class="block text-sm font-medium text-gray-700">Date</label>
-                                <input type="date" id="filter-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                                <select id="filter-date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring focus:ring-emerald focus:ring-opacity-50">
+                                    <option value="">All Dates</option>
+                                    <!-- Options populated by JS -->
+                                </select>
                             </div>
                             <!-- Correct Score -->
                             <div>
@@ -401,7 +403,35 @@
                         </div>
                     </div>
 
-                    <!-- Match Table (UPDATED) -->
+                    <!-- REQ 6: Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                        <!-- Card 1: Prediction -->
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Prediction" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-all-matches-pred-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-all-matches-pred-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <!-- Card 2: Predicted Outcome -->
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Predicted Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-all-matches-po-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-all-matches-po-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <!-- Card 3: Expected Outcome -->
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Expected Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-all-matches-eo-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-all-matches-eo-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                    </div>
+
+                    <!-- REQ 3 & 4: Match Table (UPDATED) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -421,9 +451,8 @@
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exp. Outcome</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prob. Rate</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Win</th>
-                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Draw</th>
-                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Win</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Goals</th>
+                                        <!-- REQ 3: H Win, Draw, A Win removed -->
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -457,6 +486,31 @@
                 <div id="selections-tab" class="tab-content hidden">
                     <h1 class="text-3xl font-bold text-navy mb-6">My Selections</h1>
                     
+                    <!-- REQ 6: Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Prediction" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-sel-pred-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-sel-pred-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Predicted Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-sel-po-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-sel-po-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Expected Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-sel-eo-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-sel-eo-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                    </div>
+                    
                     <div class="bg-white rounded-xl shadow-lg p-5 mb-6 flex flex-wrap items-center justify-between gap-4">
                         <!-- Left side: Load/Save -->
                         <div class="flex-grow flex flex-wrap items-center gap-3">
@@ -482,7 +536,7 @@
                         </div>
                     </div>
                     
-                    <!-- Selections Table (UPDATED to match new main table) -->
+                    <!-- REQ 4: Selections Table (UPDATED) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -495,6 +549,7 @@
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf. %</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Goals</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -517,7 +572,32 @@
                         <p class="text-lg text-gray-600">Conf. ≥ 60% & Pred. Prob. > 50% & Prob. Rate > 45</p>
                     </div>
 
-                    <!-- High Chance Table (UPDATED schema) -->
+                    <!-- REQ 6: Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Prediction" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-hc-pred-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-hc-pred-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Predicted Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-hc-po-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-hc-po-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg p-5">
+                            <h4 class="text-sm font-medium text-gray-500">"Expected Outcome" Field</h4>
+                            <p class="text-2xl font-bold text-navy" id="card-hc-eo-total">0</p>
+                            <p class="text-sm text-gray-500">Total Predictions</p>
+                            <p class="text-2xl font-bold text-emerald mt-2" id="card-hc-eo-wins">0</p>
+                            <p class="text-sm text-gray-500">Total Wins</p>
+                        </div>
+                    </div>
+
+                    <!-- REQ 4: High Chance Table (UPDATED schema) -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gold">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -534,6 +614,7 @@
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred. Prob. %</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prob. Rate</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Goals</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -770,7 +851,7 @@
         </div>
     </div>
 
-    <!-- Match Details Modal (UPDATED) -->
+    <!-- REQ 3: Match Details Modal (UPDATED) -->
     <div id="match-details-modal" class="hidden fixed inset-0 z-40 bg-black bg-opacity-60 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] transform transition-all flex flex-col" role="dialog" aria-modal="true">
             <!-- Modal Header -->
@@ -940,7 +1021,7 @@
             filters: {
                 // Main
                 league: document.getElementById('filter-league'),
-                date: document.getElementById('filter-date'),
+                date: document.getElementById('filter-date'), // REQ 1: This is now a <select>
                 correctScore: document.getElementById('filter-correct-score'),
                 recommendationTip: document.getElementById('filter-recommendation-tip'),
                 predGoalsMin: document.getElementById('filter-pred-goals-min'),
@@ -1001,7 +1082,6 @@
                 totalWins: document.getElementById('stats-total-wins'),
                 winRate: document.getElementById('stats-win-rate'),
             },
-            // 🔧 FIX: Removed charts from DOM cache, will acquire in renderStatistics function
             selections: {
                 saveBtn: document.getElementById('save-collection-btn'),
                 loadSelect: document.getElementById('load-collection-select'),
@@ -1015,13 +1095,6 @@
         // UTILITY FUNCTIONS
         // -------------------------------------------
 
-        /**
-         * 🔧 FIX: Sanitizes a string to be used as a Firebase Realtime Database key.
-         * @param {string} key - The string to sanitize.
-         * @returns {string|null} A sanitized key or null if input is invalid.
-         */
-        
-        
         /**
          * Shows a notification popup.
          * @param {string} message - The message to display.
@@ -1106,22 +1179,8 @@
                     newRow[col] = null;
                 }
             }
-            // Ensure date is in YYYY-MM-DD format if possible
-            if (newRow.Date) {
-                 // Try to parse various date formats
-                 try {
-                    // Check for 'DD/MM/YYYY'
-                    if (/^\d{2}\/\d{2}\/\d{4}$/.test(newRow.Date)) {
-                        const parts = newRow.Date.split('/');
-                        newRow.Date = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert to YYYY-MM-DD
-                    } else if (new Date(newRow.Date).toString() !== 'Invalid Date') {
-                        newRow.Date = new Date(newRow.Date).toISOString().split('T')[0];
-                    }
-                    // If it's already YYYY-MM-DD, it will pass
-                 } catch (e) {
-                     console.warn(`Invalid date format for ${newRow.MatchKey}: ${newRow.Date}`);
-                 }
-            }
+            // REQ 2: Do not parse or reformat the Date. Treat it as raw text.
+            // The existing `if (newRow.Date)` block with its try/catch has been removed.
             return newRow;
         }
 
@@ -1139,6 +1198,18 @@
             if (parts[0] < parts[1]) return "Away";
             if (parts[0] === parts[1]) return "Draw";
             return null;
+        }
+
+        /**
+         * REQ 4: Calculates total goals from a score string.
+         * @param {string} result - e.g., "2-1", "1-1", "0-3"
+         * @returns {string|number} The total goals (e.g., 3) or "—" if invalid.
+         */
+        function calculateTotalGoals(result) {
+            if (!result || !result.includes('-')) return '—';
+            const parts = result.split('-').map(s => parseInt(s.trim()));
+            if (isNaN(parts[0]) || isNaN(parts[1])) return '—';
+            return parts[0] + parts[1];
         }
         
         // -------------------------------------------
@@ -1422,16 +1493,19 @@
                 // 5. Combine lists. Firebase data takes precedence.
                 allMatchesData = [...fbMatches, ...nonStagedSheetMatches];
                 
-                // Sort by date, newest first (assuming YYYY-MM-DD format)
+                // Sort by date (as text)
                 allMatchesData.sort((a, b) => {
-                    const dateA = new Date(a.Date);
-                    const dateB = new Date(b.Date);
-                    if (dateA > dateB) return -1;
-                    if (dateA < dateB) return 1;
+                    // REQ 2: Treat date as text. Simple string comparison.
+                    // This might not be perfectly chronological if formats differ,
+                    // but it adheres to the "treat as text" rule.
+                    // A reverse sort is often desired (newest first).
+                    if (a.Date > b.Date) return -1;
+                    if (a.Date < b.Date) return 1;
                     return 0;
                 });
                 
                 populateLeagueFilter();
+                populateDateFilter(); // REQ 1: Populate new date filter
                 applyFiltersAndRender();
                 if (activeTab === 'statistics') {
                     renderStatistics();
@@ -1443,6 +1517,7 @@
                 // If sheet fails, still show Firebase data
                 allMatchesData = fbMatches;
                 populateLeagueFilter();
+                populateDateFilter(); // REQ 1
                 applyFiltersAndRender();
             } finally {
                 dom.loadingSpinner.classList.add('hidden');
@@ -1458,6 +1533,22 @@
                     option.value = league;
                     option.textContent = league;
                     dom.filters.league.appendChild(option);
+                }
+            });
+        }
+        
+        // REQ 1: New function to populate date filter
+        function populateDateFilter() {
+            const dates = [...new Set(allMatchesData.map(match => match.Date))];
+            // Sort raw text dates
+            dates.sort().reverse(); // Show newest (or highest string value) first
+            dom.filters.date.innerHTML = '<option value="">All Dates</option>'; // Reset
+            dates.forEach(date => {
+                if (date) {
+                    const option = document.createElement('option');
+                    option.value = date;
+                    option.textContent = date;
+                    dom.filters.date.appendChild(option);
                 }
             });
         }
@@ -1558,7 +1649,7 @@
             const filters = {
                 // Main
                 league: dom.filters.league.value,
-                date: dom.filters.date.value,
+                date: dom.filters.date.value, // REQ 1: Reads from <select> now
                 correctScore: dom.filters.correctScore.value,
                 recommendationTip: dom.filters.recommendationTip.value,
                 predGoalsMin: parseFloat(dom.filters.predGoalsMin.value) || null,
@@ -1617,12 +1708,7 @@
                     return (val || '').toLowerCase().includes(filter.toLowerCase());
                 }
                 
-                // We need to check the *sanitized* keys if they exist, or the original ones
-                // Since filtering happens *after* data is loaded (and sanitized data is in fbMatches),
-                // we should check for *both* original and sanitized keys.
-                // However, sanitizeObject *replaces* keys. So allMatchesData will have sanitized keys for FB data
-                // and original keys for GSheet data.
-                // Let's create a helper to check keys.
+                // Helper to get value
                 const getVal = (obj, key) => {
                     const sanitizedKey = sanitizeKey(key);
                     return obj[key] !== undefined ? obj[key] : obj[sanitizedKey];
@@ -1630,7 +1716,7 @@
 
                 // Apply filters
                 if (filters.league && match.League !== filters.league) return false;
-                if (filters.date && match.Date !== filters.date) return false;
+                if (filters.date && match.Date !== filters.date) return false; // REQ 2: Straight text comparison
                 if (!textMatch(getVal(match, "Correct Score"), filters.correctScore)) return false;
                 if (!textMatch(getVal(match, "Recommendation Tip"), filters.recommendationTip)) return false;
                 
@@ -1676,14 +1762,16 @@
                     getVal(m, "Probability Rate") > 45
                 );
                 renderHighChanceTable();
+                updateSummaryCards('hc', filteredMatches); // REQ 6
                 dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
                 dom.hcPagination.container.classList.remove('hidden');
             } else if (activeTab === 'all-matches') {
                 renderAllMatchesTable();
+                updateSummaryCards('all-matches', filteredMatches); // REQ 6
                 dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
                 dom.hcPagination.container.classList.add('hidden');
             } else if (activeTab === 'selections') {
-                renderSelectionsTable();
+                renderSelectionsTable(); // This function handles its own data and card update
                 dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
                 dom.hcPagination.container.classList.add('hidden');
             }
@@ -1705,6 +1793,49 @@
         // TABLE & LIST RENDERING (UPDATED)
         // -------------------------------------------
 
+        // REQ 6: Helper function for summary cards
+        function updateSummaryCards(prefix, data) {
+            const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+            
+            // Helper to get stats for a specific field
+            const getStats = (fieldName) => {
+                let total = 0, wins = 0;
+                data.forEach(m => {
+                    const actual = getMatchOutcome(getVal(m, "Match Result"));
+                    let pred = getVal(m, fieldName);
+                    if (!actual || !pred || pred === 'N/A' || pred === 'Pending' || pred === '') return;
+                    
+                    total++;
+                    let predOutcome = "Other";
+                    if (pred.toLowerCase().includes('home')) predOutcome = "Home";
+                    else if (pred.toLowerCase().includes('draw')) predOutcome = "Draw";
+                    else if (pred.toLowerCase().includes('away')) predOutcome = "Away";
+                    
+                    if (predOutcome === actual) wins++;
+                });
+                return { total, wins };
+            };
+            
+            const predStats = getStats("Prediction");
+            const predTotalEl = document.getElementById(`card-${prefix}-pred-total`);
+            const predWinsEl = document.getElementById(`card-${prefix}-pred-wins`);
+            if (predTotalEl) predTotalEl.textContent = predStats.total;
+            if (predWinsEl) predWinsEl.textContent = predStats.wins;
+            
+            const poStats = getStats("Predicted Outcome");
+            const poTotalEl = document.getElementById(`card-${prefix}-po-total`);
+            const poWinsEl = document.getElementById(`card-${prefix}-po-wins`);
+            if (poTotalEl) poTotalEl.textContent = poStats.total;
+            if (poWinsEl) poWinsEl.textContent = poStats.wins;
+
+            const eoStats = getStats("Expected Outcome");
+            const eoTotalEl = document.getElementById(`card-${prefix}-eo-total`);
+            const eoWinsEl = document.getElementById(`card-${prefix}-eo-wins`);
+            if (eoTotalEl) eoTotalEl.textContent = eoStats.total;
+            if (eoWinsEl) eoWinsEl.textContent = eoStats.wins;
+        }
+
+
         function renderAllMatchesTable() {
             const totalMatches = filteredMatches.length;
             const startIndex = (currentPage - 1) * rowsPerPage;
@@ -1716,7 +1847,8 @@
                 tableHtml += createMatchRowHtml(match, 'all-matches');
             });
 
-            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="18" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
+            // REQ 3 & 4: Colspan updated from 18 to 16 (removed 3, added 1)
+            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="16" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
             
             // Update pagination
             dom.pagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
@@ -1737,7 +1869,8 @@
                 tableHtml += createMatchRowHtml(match, 'high-chance');
             });
 
-            dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="12" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
+            // REQ 4: Colspan updated from 12 to 13 (added 1)
+            dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="13" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
         
             // Update high chance pagination
             dom.hcPagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
@@ -1769,6 +1902,8 @@
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 0}%</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
+                        <!-- REQ 4: Total Goals added -->
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(getVal(match, "Match Result"))}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                             <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-key="${match.MatchKey}">Delete</button>
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
@@ -1777,11 +1912,17 @@
                 `;
             });
             
-            dom.selectionsTableBody.innerHTML = tableHtml || `<tr><td colspan="8" class="text-center p-6 text-gray-500">No matches selected.</td></tr>`;
+            // REQ 4: Colspan updated from 8 to 9
+            dom.selectionsTableBody.innerHTML = tableHtml || `<tr><td colspan="9" class="text-center p-6 text-gray-500">No matches selected.</td></tr>`;
+
+            // REQ 6: Update summary cards for selections
+            updateSummaryCards('sel', selectedMatches);
         }
         
         // Conditional Formatting Helpers
         function getRowClass(prediction, result) {
+            // This function is now only used for 'all-matches' and 'selections'
+            // 'high-chance' logic is inside createMatchRowHtml
             const actualOutcome = getMatchOutcome(result);
             if (!actualOutcome || !prediction) {
                 return 'row-pending';
@@ -1808,26 +1949,34 @@
             
             const isSelected = selections.includes(match.MatchKey);
             const prediction = getVal(match, 'Prediction');
+            const result = getVal(match, "Match Result");
             const isStarred = (prediction && prediction === getVal(match, "Predicted Outcome") && prediction === getVal(match, "Expected Outcome"));
             
-            // Conditional Formatting
-            const actualOutcome = getMatchOutcome(getVal(match, "Match Result"));
+            // REQ 5: Conditional Formatting
             let rowClass = 'row-pending';
-            if(actualOutcome) {
-                 const predMatch = getMatchOutcome(prediction) === actualOutcome;
-                 const predOutcomeMatch = getMatchOutcome(getVal(match, "Predicted Outcome")) === actualOutcome;
-                 const expOutcomeMatch = getMatchOutcome(getVal(match, "Expected Outcome")) === actualOutcome;
-                 
-                 if (predMatch || predOutcomeMatch || expOutcomeMatch) {
-                     rowClass = 'row-success';
-                 } else {
-                     rowClass = 'row-fail';
-                 }
+            if (tableType === 'high-chance') {
+                if (result && result !== 'N/A' && result !== 'Pending' && result !== '') {
+                    if (result === '2-1' && prediction === 'Home') {
+                        rowClass = 'row-success'; // Green
+                    } else {
+                        rowClass = 'row-fail'; // Red
+                    }
+                }
+            } else {
+                // Existing logic for all-matches and selections
+                const actualOutcome = getMatchOutcome(result);
+                if(actualOutcome) {
+                    const predMatch = getMatchOutcome(prediction) === actualOutcome;
+                    const predOutcomeMatch = getMatchOutcome(getVal(match, "Predicted Outcome")) === actualOutcome;
+                    const expOutcomeMatch = getMatchOutcome(getVal(match, "Expected Outcome")) === actualOutcome;
+                    
+                    if (predMatch || predOutcomeMatch || expOutcomeMatch) {
+                        rowClass = 'row-success';
+                    } else {
+                        rowClass = 'row-fail';
+                    }
+                }
             }
-
-            const homeWinClass = getPercentageClass(getVal(match, "Home Win"));
-            const drawClass = getPercentageClass(getVal(match, "Draw"));
-            const awayWinClass = getPercentageClass(getVal(match, "Away Win"));
             
             const odds = `${getVal(match, "Home Odds") || 'N/A'} / ${getVal(match, "Draw Odds") || 'N/A'} / ${getVal(match, "Away Odds") || 'N/A'}`;
             
@@ -1848,10 +1997,10 @@
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Expected Outcome") || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${homeWinClass}">${getVal(match, "Home Win") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${drawClass}">${getVal(match, "Draw") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${awayWinClass}">${getVal(match, "Away Win") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result || 'N/A'}</td>
+                        <!-- REQ 4: Total Goals added -->
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(result)}</td>
+                        <!-- REQ 3: H Win, Draw, A Win removed -->
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
                         </td>
@@ -1870,7 +2019,9 @@
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result || 'N/A'}</td>
+                        <!-- REQ 4: Total Goals added -->
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(result)}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
                         </td>
@@ -1919,7 +2070,7 @@
         // -------------------------------------------
 
         function renderStatistics() {
-            // 🔧 FIX: Re-acquire chart contexts in case DOM wasn't ready on initial load
+            // Re-acquire chart contexts
             const chartCtx = {
                 prediction: document.getElementById('chart-prediction')?.getContext('2d'),
                 predictedOutcome: document.getElementById('chart-predicted-outcome')?.getContext('2d'),
@@ -1927,7 +2078,7 @@
             };
 
             if (!chartCtx.prediction || allMatchesData.length === 0) {
-                console.warn("Charts context not found or no data."); // 🔧 FIX: Use warn
+                console.warn("Charts context not found or no data.");
                 return;
             }
             
@@ -1949,7 +2100,7 @@
                     const actualOutcome = getMatchOutcome(getVal(match, "Match Result"));
                     let prediction = getVal(match, fieldName);
                     
-                    if (!actualOutcome || !prediction) {
+                    if (!actualOutcome || !prediction || prediction === 'N/A' || prediction === 'Pending' || prediction === '') {
                         return; // Skip matches without result or prediction
                     }
 
@@ -2056,6 +2207,10 @@
             // Define metrics to show as per spec
             const metrics = [
                 { label: 'Match Result', homeKey: 'Home FT', awayKey: 'Away FT', bold: true },
+                // REQ 3: Add Home Win, Draw, Away Win here
+                { label: 'Home Win %', singleKey: 'Home Win' },
+                { label: 'Draw %', singleKey: 'Draw' },
+                { label: 'Away Win %', singleKey: 'Away Win' },
                 { label: 'Home Form', homeKey: 'Home Form', awayKey: 'Away Form' },
                 { label: 'Form Rate', homeKey: 'Home Form Rate', awayKey: 'Away Form Rate' },
                 { label: 'L5 Home/Away Wins', homeKey: 'L5 H-Team Home W', awayKey: 'L5 A-Team Away W' },
@@ -2075,13 +2230,14 @@
             metrics.forEach(metric => {
                 let homeVal = 'N/A';
                 let awayVal = 'N/A';
+                let isSingle = false;
                 
                 if (metric.singleKey) {
-                    homeVal = getVal(match, metric.singleKey) || 'N/A';
+                    isSingle = true;
+                    homeVal = getVal(match, metric.singleKey) !== null ? getVal(match, metric.singleKey) : 'N/A';
                     if (metric.label === 'Match URL' && homeVal !== 'N/A') {
                         homeVal = `<a href="${homeVal}" target="_blank" class="text-blue-600 hover:underline">View Match</a>`;
                     }
-                    awayVal = '---'; // Use a dash for single-value metrics
                 } else {
                     homeVal = getVal(match, metric.homeKey) !== null ? getVal(match, metric.homeKey) : 'N/A';
                     awayVal = getVal(match, metric.awayKey) !== null ? getVal(match, metric.awayKey) : 'N/A';
@@ -2089,13 +2245,22 @@
                 
                 const boldClass = metric.bold ? 'font-bold text-lg text-navy' : 'text-gray-600';
                 
-                tableHtml += `
-                    <tr class="${metric.bold ? 'font-semibold' : ''}">
-                        <td class="px-4 py-3 text-sm ${metric.bold ? 'text-gray-900' : 'text-gray-700'}">${metric.label}</td>
-                        <td class="px-4 py-3 text-center text-sm ${boldClass}">${homeVal}</td>
-                        <td class="px-4 py-3 text-center text-sm ${boldClass}">${awayVal}</td>
-                    </tr>
-                `;
+                if (isSingle) {
+                     tableHtml += `
+                        <tr class="${metric.bold ? 'font-semibold' : ''}">
+                            <td class="px-4 py-3 text-sm ${metric.bold ? 'text-gray-900' : 'text-gray-700'}">${metric.label}</td>
+                            <td colspan="2" class="px-4 py-3 text-center text-sm ${boldClass}">${homeVal}</td>
+                        </tr>
+                    `;
+                } else {
+                    tableHtml += `
+                        <tr class="${metric.bold ? 'font-semibold' : ''}">
+                            <td class="px-4 py-3 text-sm ${metric.bold ? 'text-gray-900' : 'text-gray-700'}">${metric.label}</td>
+                            <td class="px-4 py-3 text-center text-sm ${boldClass}">${homeVal}</td>
+                            <td class="px-4 py-3 text-center text-sm ${boldClass}">${awayVal}</td>
+                        </tr>
+                    `;
+                }
             });
             
             dom.modals.comparisonTable.innerHTML = tableHtml;
@@ -2124,7 +2289,7 @@
         });
         dom.filters.globalSearch.addEventListener('input', applyFiltersAndRender);
         
-        // Manual Push to Firebase
+        // Manual Push to Firebase (REQ 7: Button is now in header, listener is the same)
         dom.filterButtons.pushToFirebase.addEventListener('click', async () => {
             if (selections.length === 0) {
                 showNotification("No matches selected to push.", "info");
@@ -2304,17 +2469,21 @@
             // Helper to get value securely
             const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
             
-            // Use all headers from the new table
+            // REQ 3 & 4: Headers updated (removed H/D/A Win, added Total Goals)
             const headers = [
                 "Date", "Home Team", "Away Team", "Home Odds", "Draw Odds", "Away Odds",
                 "Correct Score", "Prediction", "Confidence %", "Predicted Outcome",
                 "Predicted Probability (%)", "Expected Outcome", "Probability Rate", "Match Result",
-                "Home Win", "Draw", "Away Win", "MatchKey"
+                "Total Goals", "MatchKey" // H/D/A Win removed
             ];
             
             const rows = selectedMatches.map(m => {
                 // When exporting, we must use the getVal helper
-                return headers.map(header => `"${getVal(m, header) || ''}"`).join(',');
+                const rowData = {
+                    ...m,
+                    "Total Goals": calculateTotalGoals(getVal(m, "Match Result"))
+                };
+                return headers.map(header => `"${getVal(rowData, header) || ''}"`).join(',');
             });
             
             const csvContent = "data:text/csv;charset=utf-8," 
@@ -2331,55 +2500,41 @@
         }
 
     
-/* ======= Sanitization and Safe Firebase Write ======= */
+        /* ======= Sanitization and Safe Firebase Write ======= */
 
-/**
- * Recursively sanitizes object keys for Firebase.
- * @param {object} obj - The object to sanitize.
- * @returns {object} A new object with sanitized keys.
- */
-function sanitizeObject(obj) {
-  const cleanObj = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const cleanKey = sanitizeKey(key);
-    if (!cleanKey) continue;
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      cleanObj[cleanKey] = sanitizeObject(value);
-    } else {
-      cleanObj[cleanKey] = value;
-    }
-  }
-  return cleanObj;
-}
+        /**
+         * Recursively sanitizes object keys for Firebase.
+         * @param {object} obj - The object to sanitize.
+         * @returns {object} A new object with sanitized keys.
+         */
+        function sanitizeObject(obj) {
+          const cleanObj = {};
+          for (const [key, value] of Object.entries(obj)) {
+            const cleanKey = sanitizeKey(key);
+            if (!cleanKey) continue;
+            if (value && typeof value === "object" && !Array.isArray(value)) {
+              cleanObj[cleanKey] = sanitizeObject(value);
+            } else {
+              cleanObj[cleanKey] = value;
+            }
+          }
+          return cleanObj;
+        }
 
-// FIX: Removed the incorrect try...catch block that was here and causing the 'matchData is not defined' error.
-// The logic from this block is correctly handled inside the `fetchMatchData` (for auto-staging)
-// and the `pushToFirebase` button listener (for manual staging).
-
-/* ======= End of Sanitization Section ======= */
-
-
-/* ======= Sanitization and Safe Firebase Write ======= */
-/**
- * Sanitizes a string to be used as a Firebase key.
- * @param {string} key - The string to sanitize.
- * @returns {string|null} A sanitized key or null if input is invalid.
- */
-function sanitizeKey(key) {
-  if (!key || typeof key !== "string") return null;
-  // Replace Firebase forbidden characters and spaces
-  return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
-}
+        /* ======= Sanitization and Safe Firebase Write ======= */
+        /**
+         * Sanitizes a string to be used as a Firebase key.
+         * @param {string} key - The string to sanitize.
+         * @returns {string|null} A sanitized key or null if input is invalid.
+         */
+        function sanitizeKey(key) {
+          if (!key || typeof key !== "string") return null;
+          // Replace Firebase forbidden characters and spaces
+          return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
+        }
 
 
-// FIX: Removed the unused `pushMatchToFirebase` function.
-// Its logic is now correctly implemented in the `fetchMatchData` and
-// `pushToFirebase` button listener, using the `match.MatchKey` field
-// which is the correct unique identifier.
-
-/* ======= End of Sanitization Section ======= */
-
-</script>
+    </script>
 
 </body>
 </html>
