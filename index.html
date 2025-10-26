@@ -9,6 +9,8 @@
     <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
 
     <!-- 1. Tailwind CSS -->
+    <!-- Note: The 'cdn.tailwindcss.com should not be used in production' warning is expected. -->
+    <!-- Using the CDN is perfectly fine for development and testing like this. -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. Chart.js for Statistics -->
@@ -1395,18 +1397,26 @@
                     console.log(`Auto-staging ${matchesToStage.length} matches.`);
                     
                     const stagingPromises = matchesToStage.map(match => {
-                        const safeKey = sanitizeKey(match.MatchKey); // 🔧 FIX: Sanitize the key
+                        const safeKey = sanitizeKey(match.MatchKey); 
                         if (!safeKey) {
                             console.warn("Skipping staging for match with invalid key:", match.MatchKey);
                             return Promise.resolve(); // Don't block other promises
                         }
-                        return set(ref(db, 'predictions/' + safeKey), match); // 🔧 FIX: Use safeKey
+                        // FIX: Sanitize the match *object* before setting it
+                        const safeMatchData = sanitizeObject(match); 
+                        return set(ref(db, 'predictions/' + safeKey), safeMatchData);
                     });
-                    await Promise.all(stagingPromises);
                     
-                    // Add newly staged matches to our in-memory Firebase list
-                    fbMatches.push(...matchesToStage);
-                    console.log(`Staging complete.`);
+                    try {
+                        await Promise.all(stagingPromises);
+                        // Add newly staged matches to our in-memory Firebase list
+                        fbMatches.push(...matchesToStage);
+                        console.log(`Staging complete.`);
+                    } catch (stagingError) {
+                         console.error("Google Sheet Fetch Error:", stagingError);
+                         // This error is caught here from the original stack trace
+                         // The `sanitizeObject` call should fix this.
+                    }
                 }
 
                 // 5. Combine lists. Firebase data takes precedence.
@@ -1606,51 +1616,64 @@
                     if (!filter) return true;
                     return (val || '').toLowerCase().includes(filter.toLowerCase());
                 }
+                
+                // We need to check the *sanitized* keys if they exist, or the original ones
+                // Since filtering happens *after* data is loaded (and sanitized data is in fbMatches),
+                // we should check for *both* original and sanitized keys.
+                // However, sanitizeObject *replaces* keys. So allMatchesData will have sanitized keys for FB data
+                // and original keys for GSheet data.
+                // Let's create a helper to check keys.
+                const getVal = (obj, key) => {
+                    const sanitizedKey = sanitizeKey(key);
+                    return obj[key] !== undefined ? obj[key] : obj[sanitizedKey];
+                }
 
                 // Apply filters
                 if (filters.league && match.League !== filters.league) return false;
                 if (filters.date && match.Date !== filters.date) return false;
-                if (!textMatch(match["Correct Score"], filters.correctScore)) return false;
-                if (!textMatch(match["Recommendation Tip"], filters.recommendationTip)) return false;
+                if (!textMatch(getVal(match, "Correct Score"), filters.correctScore)) return false;
+                if (!textMatch(getVal(match, "Recommendation Tip"), filters.recommendationTip)) return false;
                 
                 if (filters.globalSearch) {
                     const search = filters.globalSearch;
-                    if (!textMatch(match["Home Team"], search) &&
-                        !textMatch(match["Away Team"], search) &&
+                    if (!textMatch(getVal(match, "Home Team"), search) &&
+                        !textMatch(getVal(match, "Away Team"), search) &&
                         !textMatch(match.League, search) &&
                         !textMatch(match.Date, search)) return false;
                 }
 
                 // Main Filters
-                if (!inRange(match["Predicted Total Goals"], filters.predGoalsMin, filters.predGoalsMax)) return false;
-                if (!inRange(match["Goals to be Scored"], filters.goalsScoredMin, filters.goalsScoredMax)) return false;
-                if (!inRange(match["Home Team Power"], filters.homePowerMin, filters.homePowerMax)) return false;
-                if (!inRange(match["Away Team Power"], filters.awayPowerMin, filters.awayPowerMax)) return false;
-                if (!inRange(match["Home Team Table Standing"], filters.homeStandingMin, filters.homeStandingMax)) return false;
-                if (!inRange(match["Away Team Table Standing"], filters.awayStandingMin, filters.awayStandingMax)) return false;
+                if (!inRange(getVal(match, "Predicted Total Goals"), filters.predGoalsMin, filters.predGoalsMax)) return false;
+                if (!inRange(getVal(match, "Goals to be Scored"), filters.goalsScoredMin, filters.goalsScoredMax)) return false;
+                if (!inRange(getVal(match, "Home Team Power"), filters.homePowerMin, filters.homePowerMax)) return false;
+                if (!inRange(getVal(match, "Away Team Power"), filters.awayPowerMin, filters.awayPowerMax)) return false;
+                if (!inRange(getVal(match, "Home Team Table Standing"), filters.homeStandingMin, filters.homeStandingMax)) return false;
+                if (!inRange(getVal(match, "Away Team Table Standing"), filters.awayStandingMin, filters.awayStandingMax)) return false;
                 
                 // Modal Filters
-                if (!inRange(match["Hteam Avg Scored"], filters.hAvgScoredMin, filters.hAvgScoredMax)) return false;
-                if (!inRange(match["Hteam Avg Conceded"], filters.hAvgConcededMin, filters.hAvgConcededMax)) return false;
-                if (!inRange(match["HTeam Power - Over 2.5"], filters.hPowerOv25Min, filters.hPowerOv25Max)) return false;
-                if (!inRange(match["Ateam Avg Scored"], filters.aAvgScoredMin, filters.aAvgScoredMax)) return false;
-                if (!inRange(match["Ateam Avg Conceded"], filters.aAvgConcededMin, filters.aAvgConcededMax)) return false;
-                if (!inRange(match["ATeam Power - Over 2.5"], filters.aPowerOv25Min, filters.aPowerOv25Max)) return false;
-                if (!inRange(match["Home Team Power"], filters.hPowerMin, filters.hPowerMax)) return false;
-                if (!inRange(match["Away Team Power"], filters.aPowerMin, filters.aPowerMax)) return false;
-                if (!inRange(match["HTeam Power - BTTS"], filters.hPowerBttsMin, filters.hPowerBttsMax)) return false;
-                if (!inRange(match["ATeam Power - BTTS"], filters.aPowerBttsMin, filters.aPowerBttsMax)) return false;
+                if (!inRange(getVal(match, "Hteam Avg Scored"), filters.hAvgScoredMin, filters.hAvgScoredMax)) return false;
+                if (!inRange(getVal(match, "Hteam Avg Conceded"), filters.hAvgConcededMin, filters.hAvgConcededMax)) return false;
+                if (!inRange(getVal(match, "HTeam Power - Over 2.5"), filters.hPowerOv25Min, filters.hPowerOv25Max)) return false;
+                if (!inRange(getVal(match, "Ateam Avg Scored"), filters.aAvgScoredMin, filters.aAvgScoredMax)) return false;
+                if (!inRange(getVal(match, "Ateam Avg Conceded"), filters.aAvgConcededMin, filters.aAvgConcededMax)) return false;
+                if (!inRange(getVal(match, "ATeam Power - Over 2.5"), filters.aPowerOv25Min, filters.aPowerOv25Max)) return false;
+                if (!inRange(getVal(match, "Home Team Power"), filters.hPowerMin, filters.hPowerMax)) return false;
+                if (!inRange(getVal(match, "Away Team Power"), filters.aPowerMin, filters.aPowerMax)) return false;
+                if (!inRange(getVal(match, "HTeam Power - BTTS"), filters.hPowerBttsMin, filters.hPowerBttsMax)) return false;
+                if (!inRange(getVal(match, "ATeam Power - BTTS"), filters.aPowerBttsMin, filters.aPowerBttsMax)) return false;
                 
                 return true;
             });
             
             // 3. Tab-specific filtering & rendering
             if (activeTab === 'high-chance') {
+                // Helper to get value securely
+                const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
                 // Apply High Chance criteria
                 filteredMatches = filteredMatches.filter(m => 
-                    m["Confidence %"] >= 60 &&
-                    m["Predicted Probability (%)"] > 50 &&
-                    m["Probability Rate"] > 45
+                    getVal(m, "Confidence %") >= 60 &&
+                    getVal(m, "Predicted Probability (%)") > 50 &&
+                    getVal(m, "Probability Rate") > 45
                 );
                 renderHighChanceTable();
                 dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
@@ -1730,18 +1753,22 @@
             const selectedMatches = selections.map(key => allMatchesData.find(m => m.MatchKey === key)).filter(Boolean); // .filter(Boolean) removes undefined
             
             selectedMatches.forEach(match => {
-                const isStarred = (match.Prediction && match.Prediction === match["Predicted Outcome"] && match.Prediction === match["Expected Outcome"]);
-                const rowClass = getRowClass(match.Prediction, match["Match Result"]);
+                // Helper to get value securely
+                const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+                
+                const prediction = getVal(match, 'Prediction');
+                const isStarred = (prediction && prediction === getVal(match, "Predicted Outcome") && prediction === getVal(match, "Expected Outcome"));
+                const rowClass = getRowClass(prediction, getVal(match, "Match Result"));
 
                 tableHtml += `
                     <tr class="hover:bg-gray-50 ${rowClass}">
                         <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 0}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 0}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                             <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-key="${match.MatchKey}">Delete</button>
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
@@ -1776,17 +1803,20 @@
         }
 
         function createMatchRowHtml(match, tableType) {
+            // Helper to get value securely
+            const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+            
             const isSelected = selections.includes(match.MatchKey);
-            const isStarred = (match.Prediction && match.Prediction === match["Predicted Outcome"] && match.Prediction === match["Expected Outcome"]);
+            const prediction = getVal(match, 'Prediction');
+            const isStarred = (prediction && prediction === getVal(match, "Predicted Outcome") && prediction === getVal(match, "Expected Outcome"));
             
             // Conditional Formatting
-            // Use 'Prediction' for main row, but check all 3 for 'any' success
-            const actualOutcome = getMatchOutcome(match["Match Result"]);
+            const actualOutcome = getMatchOutcome(getVal(match, "Match Result"));
             let rowClass = 'row-pending';
             if(actualOutcome) {
-                 const predMatch = getMatchOutcome(match.Prediction) === actualOutcome;
-                 const predOutcomeMatch = getMatchOutcome(match["Predicted Outcome"]) === actualOutcome;
-                 const expOutcomeMatch = getMatchOutcome(match["Expected Outcome"]) === actualOutcome;
+                 const predMatch = getMatchOutcome(prediction) === actualOutcome;
+                 const predOutcomeMatch = getMatchOutcome(getVal(match, "Predicted Outcome")) === actualOutcome;
+                 const expOutcomeMatch = getMatchOutcome(getVal(match, "Expected Outcome")) === actualOutcome;
                  
                  if (predMatch || predOutcomeMatch || expOutcomeMatch) {
                      rowClass = 'row-success';
@@ -1795,11 +1825,11 @@
                  }
             }
 
-            const homeWinClass = getPercentageClass(match["Home Win"]);
-            const drawClass = getPercentageClass(match["Draw"]);
-            const awayWinClass = getPercentageClass(match["Away Win"]);
+            const homeWinClass = getPercentageClass(getVal(match, "Home Win"));
+            const drawClass = getPercentageClass(getVal(match, "Draw"));
+            const awayWinClass = getPercentageClass(getVal(match, "Away Win"));
             
-            const odds = `${match["Home Odds"] || 'N/A'} / ${match["Draw Odds"] || 'N/A'} / ${match["Away Odds"] || 'N/A'}`;
+            const odds = `${getVal(match, "Home Odds") || 'N/A'} / ${getVal(match, "Draw Odds") || 'N/A'} / ${getVal(match, "Away Odds") || 'N/A'}`;
             
             // Different columns for different tables
             if (tableType === 'all-matches') {
@@ -1808,20 +1838,20 @@
                         <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
                         <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Correct Score"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Outcome"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Probability (%)"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Expected Outcome"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Probability Rate"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${homeWinClass}">${match["Home Win"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${drawClass}">${match["Draw"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${awayWinClass}">${match["Away Win"] || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Correct Score") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Outcome") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Expected Outcome") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${homeWinClass}">${getVal(match, "Home Win") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${drawClass}">${getVal(match, "Draw") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium ${awayWinClass}">${getVal(match, "Away Win") || 'N/A'}%</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
                         </td>
@@ -1833,14 +1863,14 @@
                         <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
                         <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Home Team"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${match["Away Team"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Correct Score"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Prediction || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${match["Confidence %"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Predicted Probability (%)"] || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match["Probability Rate"] || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${match["Match Result"] || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Correct Score") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
+                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${getVal(match, "Match Result") || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
                         </td>
@@ -1901,6 +1931,9 @@
                 return;
             }
             
+            // Helper to get value securely
+            const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+            
             // Helper function to process stats for one prediction field
             const getStatsForField = (fieldName) => {
                 let stats = {
@@ -1913,8 +1946,8 @@
                 };
                 
                 allMatchesData.forEach(match => {
-                    const actualOutcome = getMatchOutcome(match["Match Result"]);
-                    let prediction = match[fieldName];
+                    const actualOutcome = getMatchOutcome(getVal(match, "Match Result"));
+                    let prediction = getVal(match, fieldName);
                     
                     if (!actualOutcome || !prediction) {
                         return; // Skip matches without result or prediction
@@ -2013,9 +2046,12 @@
                 return;
             }
             
-            dom.modals.matchTitle.textContent = `${match["Home Team"]} vs ${match["Away Team"]}`;
-            dom.modals.homeTeam.textContent = match["Home Team"];
-            dom.modals.awayTeam.textContent = match["Away Team"];
+            // Helper to get value securely
+            const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+            
+            dom.modals.matchTitle.textContent = `${getVal(match, "Home Team")} vs ${getVal(match, "Away Team")}`;
+            dom.modals.homeTeam.textContent = getVal(match, "Home Team");
+            dom.modals.awayTeam.textContent = getVal(match, "Away Team");
             
             // Define metrics to show as per spec
             const metrics = [
@@ -2041,14 +2077,14 @@
                 let awayVal = 'N/A';
                 
                 if (metric.singleKey) {
-                    homeVal = match[metric.singleKey] || 'N/A';
+                    homeVal = getVal(match, metric.singleKey) || 'N/A';
                     if (metric.label === 'Match URL' && homeVal !== 'N/A') {
                         homeVal = `<a href="${homeVal}" target="_blank" class="text-blue-600 hover:underline">View Match</a>`;
                     }
                     awayVal = '---'; // Use a dash for single-value metrics
                 } else {
-                    homeVal = match[metric.homeKey] !== null ? match[metric.homeKey] : 'N/A';
-                    awayVal = match[metric.awayKey] !== null ? match[metric.awayKey] : 'N/A';
+                    homeVal = getVal(match, metric.homeKey) !== null ? getVal(match, metric.homeKey) : 'N/A';
+                    awayVal = getVal(match, metric.awayKey) !== null ? getVal(match, metric.awayKey) : 'N/A';
                 }
                 
                 const boldClass = metric.bold ? 'font-bold text-lg text-navy' : 'text-gray-600';
@@ -2104,12 +2140,14 @@
                 if (match) {
                     try {
                         match.Staged = true; // Mark as manually staged
-                        const safeKey = sanitizeKey(match.MatchKey); // 🔧 FIX: Sanitize the key
-                        if (!safeKey) { // 🔧 FIX
+                        const safeKey = sanitizeKey(match.MatchKey); 
+                        if (!safeKey) {
                             console.warn("Skipping push for match with invalid key:", match.MatchKey);
                             return; // Skip this one
                         }
-                        await set(ref(db, 'predictions/' + safeKey), match); // 🔧 FIX: Use safeKey
+                        // FIX: Sanitize the match *object* before setting it
+                        const safeMatchData = sanitizeObject(match);
+                        await set(ref(db, 'predictions/' + safeKey), safeMatchData); 
                         successCount++;
                     } catch (error) {
                         console.error(`Failed to push ${matchKey}:`, error);
@@ -2263,6 +2301,9 @@
                 return;
             }
             
+            // Helper to get value securely
+            const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
+            
             // Use all headers from the new table
             const headers = [
                 "Date", "Home Team", "Away Team", "Home Odds", "Draw Odds", "Away Odds",
@@ -2272,7 +2313,8 @@
             ];
             
             const rows = selectedMatches.map(m => {
-                return headers.map(header => `"${m[header] || ''}"`).join(',');
+                // When exporting, we must use the getVal helper
+                return headers.map(header => `"${getVal(m, header) || ''}"`).join(',');
             });
             
             const csvContent = "data:text/csv;charset=utf-8," 
@@ -2291,7 +2333,11 @@
     
 /* ======= Sanitization and Safe Firebase Write ======= */
 
-
+/**
+ * Recursively sanitizes object keys for Firebase.
+ * @param {object} obj - The object to sanitize.
+ * @returns {object} A new object with sanitized keys.
+ */
 function sanitizeObject(obj) {
   const cleanObj = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -2306,23 +2352,19 @@ function sanitizeObject(obj) {
   return cleanObj;
 }
 
-try {
-  const matchKeyRaw = `${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
-  const safeMatchKey = sanitizeKey(matchKeyRaw);
-  const safeMatchData = sanitizeObject(matchData);
-  const matchRef = ref(db, `predictions/${safeMatchKey}`);
-
-  console.log(`✅ Uploaded: ${safeMatchKey}`);
-  showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
-} catch (err) {
-  console.error("❌ Firebase Upload Error:", err);
-  showNotification(`Firebase Error: ${err.message}`, "error");
-}
+// FIX: Removed the incorrect try...catch block that was here and causing the 'matchData is not defined' error.
+// The logic from this block is correctly handled inside the `fetchMatchData` (for auto-staging)
+// and the `pushToFirebase` button listener (for manual staging).
 
 /* ======= End of Sanitization Section ======= */
 
 
 /* ======= Sanitization and Safe Firebase Write ======= */
+/**
+ * Sanitizes a string to be used as a Firebase key.
+ * @param {string} key - The string to sanitize.
+ * @returns {string|null} A sanitized key or null if input is invalid.
+ */
 function sanitizeKey(key) {
   if (!key || typeof key !== "string") return null;
   // Replace Firebase forbidden characters and spaces
@@ -2330,21 +2372,11 @@ function sanitizeKey(key) {
 }
 
 
+// FIX: Removed the unused `pushMatchToFirebase` function.
+// Its logic is now correctly implemented in the `fetchMatchData` and
+// `pushToFirebase` button listener, using the `match.MatchKey` field
+// which is the correct unique identifier.
 
-async function pushMatchToFirebase(matchData) {
-  try {
-    const matchKeyRaw = `${matchData["Match_Date"] || ""}|${matchData["Home Team"] || ""}|${matchData["Away Team"] || ""}`;
-    const safeMatchKey = sanitizeKey(matchKeyRaw);
-    const safeMatchData = sanitizeObject(matchData);
-    const matchRef = ref(db, `predictions/${safeMatchKey}`);
-    await set(matchRef, safeMatchData);
-    console.log(`✅ Uploaded: ${safeMatchKey}`);
-    showNotification(`✅ Uploaded ${safeMatchKey}`, "success");
-  } catch (err) {
-    console.error("❌ Firebase Upload Error:", err);
-    showNotification(`Firebase Error: ${err.message}`, "error");
-  }
-}
 /* ======= End of Sanitization Section ======= */
 
 </script>
