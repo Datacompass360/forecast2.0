@@ -2908,5 +2908,182 @@
 
     </script>
 
+
+/* ==== Added helpers: render into shared matches table body ==== */
+function renderRowsToMatchesBody(data, tableType='all-matches') {
+    const tbody = document.getElementById('matches-table-body');
+    if(!tbody) return;
+    if(!Array.isArray(data) || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="16" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
+        return;
+    }
+    // Prefer existing createMatchRowHtml if present
+    if(typeof createMatchRowHtml === 'function') {
+        tbody.innerHTML = data.map(m => createMatchRowHtml(m, tableType)).join('');
+    } else {
+        // Fallback basic row builder
+        tbody.innerHTML = data.map(m => {
+            return `<tr class="hover:bg-gray-50">
+                <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald select-match-checkbox" data-match-key="${m.MatchKey||''}"></td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${m.Date||''}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${m['Home Team']||''}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${m['Away Team']||''}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${m.Prediction||''}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${m['Confidence %']||''}%</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${m['Match Result']||''}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                    <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-key="${m.MatchKey||''}">Delete</button>
+                    <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${m.MatchKey||''}">View</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+/* ==== Finished Matches: fetch from Firebase and render into shared table body ==== */
+async function loadFinishedMatchesFromFirebaseAndRender() {
+    const url = "https://datacompass360-3b5d9-default-rtdb.firebaseio.com/predictions.json";
+    try {
+        // show spinner if available
+        const spinner = document.getElementById('loading-spinner');
+        const msg = document.getElementById('loading-message');
+        if(spinner) spinner.classList.remove('hidden');
+        if(msg) msg.textContent = 'Loading Finished Matches...';
+        const res = await fetch(url);
+        if(!res.ok) throw new Error('Firebase fetch failed: ' + res.status);
+        const json = await res.json();
+        if(!json) {
+            renderRowsToMatchesBody([], 'finished');
+            if(spinner) spinner.classList.add('hidden');
+            return;
+        }
+        const arr = Object.keys(json).map(k => ({...json[k], _fbKey: k}));
+        // store for debugging
+        window.finishedMatchesFromFirebase = arr;
+        // Render into shared table body
+        renderRowsToMatchesBody(arr, 'finished');
+    } catch(err) {
+        console.error(err);
+    } finally {
+        const spinner = document.getElementById('loading-spinner');
+        if(spinner) spinner.classList.add('hidden');
+    }
+}
+
+/* ==== High Chance: use sheet-derived allMatchesData but exclude Firebase-staged => render into shared table body ==== */
+function getHighChanceDatasetFromAllMatches() {
+    // prefer allMatchesData (populated by fetchMatchData)
+    const source = Array.isArray(window.allMatchesData) ? window.allMatchesData : [];
+    // exclude staged/Firebase records
+    const filteredSource = source.filter(m => {
+        const staged = (m.Staged === true || m.Staged === 'true');
+        const inFirebase = window.firebaseKeys && window.firebaseKeys.has && window.firebaseKeys.has(m.MatchKey);
+        return !staged && !inFirebase;
+    });
+    // apply numeric HC criteria
+    const hc = filteredSource.filter(m => {
+        const c = parseFloat(m['Confidence %'] || m.Confidence || 0) || 0;
+        const pp = parseFloat(m['Predicted Probability (%)'] || m.Predicted_Probability_ || m.Predicted_Probability || 0) || 0;
+        const pr = parseFloat(m['Probability Rate'] || m.Probability_Rate || m.ProbabilityRate || 0) || 0;
+        return c >= 60 && pp > 50 && pr > 45;
+    });
+    return hc;
+}
+
+function applyHighChanceFiltersAndRender() {
+    let data = getHighChanceDatasetFromAllMatches();
+    // apply UI filter inputs for high chance
+    const league = document.getElementById('filter-league-highchance')?.value || '';
+    const date = document.getElementById('filter-date-highchance')?.value || '';
+    const correct = document.getElementById('filter-correctscore-highchance')?.value || '';
+    const confidence = document.getElementById('filter-confidence-highchance')?.value || '';
+    const global = document.getElementById('global-search')?.value?.toLowerCase() || '';
+    if(league) data = data.filter(m => (m.League||'').toString() === league);
+    if(date) data = data.filter(m => (m.Date||'').toString() === date);
+    if(correct) data = data.filter(m => ((m['Correct Score']||m.CorrectScore||'')+'').includes(correct));
+    if(confidence) {
+        const confNum = parseFloat(confidence) || 0;
+        data = data.filter(m => (parseFloat(m['Confidence %']||m.Confidence||0) || 0) >= confNum);
+    }
+    if(global) {
+        data = data.filter(m => {
+            return Object.values(m).join(' ').toLowerCase().includes(global);
+        });
+    }
+    renderRowsToMatchesBody(data, 'high-chance');
+}
+
+/* Wire high-chance filter inputs live */
+['filter-league-highchance','filter-date-highchance','filter-correctscore-highchance','filter-confidence-highchance','global-search'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', applyHighChanceFiltersAndRender);
+    if(el) el.addEventListener('change', applyHighChanceFiltersAndRender);
+});
+
+/* When tab switches to high-chance, render */
+document.querySelectorAll('.nav-tab-button[data-tab="high-chance"]').forEach(btn=>{
+    btn.addEventListener('click', ()=> {
+        // small delay to ensure activeTab is set elsewhere
+        setTimeout(()=>{ applyHighChanceFiltersAndRender(); }, 80);
+    });
+});
+
+/* When tab switches to finished-matches, fetch firebase and render */
+document.querySelectorAll('.nav-tab-button[data-tab="finished-matches"]').forEach(btn=>{
+    btn.addEventListener('click', ()=> {
+        setTimeout(()=>{ loadFinishedMatchesFromFirebaseAndRender(); }, 80);
+    });
+});
+
+/* ==== Enhance openMatchDetailsModal to append new fields into modal comparison table ==== */
+const origOpen = window.openMatchDetailsModal;
+function enhancedOpenMatchDetailsModal(matchKey) {
+    // try to find match in allMatchesData, then in finishedMatchesFromFirebase
+    let match = Array.isArray(window.allMatchesData) ? window.allMatchesData.find(m=>m.MatchKey===matchKey) : null;
+    if(!match && Array.isArray(window.finishedMatchesFromFirebase)) {
+        match = window.finishedMatchesFromFirebase.find(m=>m.MatchKey===matchKey || m._fbKey===matchKey) || null;
+    }
+    if(!match) {
+        // fallback: try searching by partial key
+        if(Array.isArray(window.allMatchesData)) {
+            match = window.allMatchesData.find(m => (m.MatchKey||'').includes(matchKey));
+        }
+    }
+    if(!match) {
+        if(typeof showNotification === 'function') showNotification("Error: Could not find match details.", "error");
+        return;
+    }
+    // Call original if exists to populate base fields
+    if(typeof origOpen === 'function') {
+        try { origOpen(matchKey); } catch(e){ console.warn('origOpen failed', e); }
+    }
+    // Now append rows for additional fields into modal-comparison-table
+    const tbody = document.getElementById('modal-comparison-table');
+    if(!tbody) return;
+    // Remove existing rows for our added fields if present
+    // We'll rebuild whole comparison table rows for these entries appended at end
+    // Prepare values with fallbacks
+    const homeStanding = match['Home Team Table Standing'] || match['Home Team TableStanding'] || match['HomeTeamTableStanding'] || '-';
+    const awayStanding = match['Away Team Table Standing'] || match['Away Team TableStanding'] || match['AwayTeamTableStanding'] || '-';
+    const homePower = match['Home Team Power'] || match['HomeTeamPower'] || '-';
+    const awayPower = match['Away Team Power'] || match['AwayTeamPower'] || '-';
+    // Append rows
+    const rows = [];
+    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Home Team Table Standing</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homeStanding}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayStanding}</td></tr>`);
+    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Away Team Table Standing</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homeStanding}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayStanding}</td></tr>`);
+    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Home Team Power</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homePower}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayPower}</td></tr>`);
+    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Away Team Power</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homePower}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayPower}</td></tr>`);
+    // Append to existing tbody
+    tbody.insertAdjacentHTML('beforeend', rows.join(''));
+    // Show modal
+    const modal = document.getElementById('match-details-modal');
+    if(modal) modal.classList.remove('hidden');
+}
+if(typeof window.openMatchDetailsModal === 'function') {
+    window.openMatchDetailsModal = enhancedOpenMatchDetailsModal;
+} else {
+    window.openMatchDetailsModal = enhancedOpenMatchDetailsModal;
+}
+
 </body>
 </html>
