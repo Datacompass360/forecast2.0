@@ -9,7 +9,55 @@
     <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
 
     <!-- 1. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Populate common filter dropdowns across tabs from allMatchesData
+        function populateFiltersAcrossTabs() {
+            const dates = Array.from(new Set(allMatchesData.map(m => m.Date).filter(Boolean))).sort();
+            const leagues = Array.from(new Set(allMatchesData.map(m => m.League).filter(Boolean))).sort();
+            const corrects = Array.from(new Set(allMatchesData.map(m => m['Correct Score'] || m.CorrectScore).filter(Boolean))).sort();
+            const confidences = Array.from(new Set(allMatchesData.map(m => m['Confidence %'] || m.Confidence).filter(Boolean))).sort((a,b)=>parseFloat(b)-parseFloat(a));
+            const targets = [
+                'filter-date','filter-league','filter-correctscore','filter-confidence',
+                'filter-date-finished','filter-league-finished','filter-correctscore-finished','filter-confidence-finished',
+                'filter-date-highchance','filter-league-highchance','filter-correctscore-highchance','filter-confidence-highchance'
+            ];
+            // helper to fill
+            function fill(id, items, allowEmpty=true) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const cur = el.value;
+                el.innerHTML = '';
+                if (allowEmpty) el.appendChild(new Option('All', ''));
+                items.forEach(it => {
+                    const opt = new Option(it, it);
+                    el.appendChild(opt);
+                });
+                if (cur) el.value = cur;
+            }
+            fill('filter-date', dates);
+            fill('filter-date-finished', dates);
+            fill('filter-date-highchance', dates);
+            fill('filter-league', leagues);
+            fill('filter-league-finished', leagues);
+            fill('filter-league-highchance', leagues);
+            fill('filter-correctscore', corrects, true);
+            fill('filter-correctscore-finished', corrects, true);
+            fill('filter-correctscore-highchance', corrects, true);
+            fill('filter-confidence', confidences, true);
+            fill('filter-confidence-finished', confidences, true);
+            fill('filter-confidence-highchance', confidences, true);
+        }
+        // call after data load
+        try { if (typeof fetchMatchData === 'function') {
+            const origFetch = fetchMatchData;
+            fetchMatchData = async function() {
+                const res = await origFetch();
+                populateFiltersAcrossTabs();
+                return res;
+            }
+        }} catch(e){console.warn('Could not wrap fetchMatchData', e)}
+
+</script>
     
     <!-- 2. Chart.js for Statistics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -118,6 +166,27 @@
             height: 400px;
             margin: auto;
         }
+    
+        /* Extra button micro-animations */
+        .hover\:-translate-y-0.5:hover { transform: translateY(-2px); }
+        .rounded-2xl { border-radius: 1rem; }
+
+    
+        /* Mixed Accent Palette */
+        :root{
+            --accent-1: #10b981; /* emerald */
+            --accent-2: #2563eb; /* blue */
+            --accent-3: #7c3aed; /* purple */
+            --accent-4: #ef4444; /* red */
+        }
+        .accent-gradient {
+            background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3));
+            color: white;
+        }
+        .table-row-alt:nth-child(even){ background-color: rgba(15,23,42,0.03); }
+        .sticky-header { position: sticky; top: 0; backdrop-filter: blur(4px); }
+        .card { padding: 1rem; border-radius: 0.75rem; box-shadow: 0 6px 18px rgba(2,6,23,0.06); background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.82)); }
+
     </style>
 </head>
 <body class="bg-gray-100">
@@ -255,11 +324,20 @@
             </div>
 
             <!-- REQ 7: Push to Firebase (Moved) -->
-            <button id="push-to-firebase-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md flex items-center space-x-2 transition duration-200">
+            <button id="push-to-firebase-btn" class="px-5 py-3 bg-emerald hover:bg-emerald-dark text-white rounded-2xl font-semibold shadow-xl flex items-center space-x-3 transition-transform transform hover:-translate-y-0.5">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                <span>Push Selected</span>
+                <span class="uppercase tracking-wide">Push to Firebase</span>
+            </button>
+
+            <button id="refresh-data-btn" class="px-4 py-2 bg-white text-emerald border border-emerald rounded-full hover:shadow-md font-medium shadow-sm flex items-center space-x-2 transition transform hover:-translate-y-0.5 ml-4" title="Refresh data from Google Sheet & Firebase">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 20v-6h-6" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 19a9 9 0 1114 0" />
+                </svg>
+                <span class="uppercase tracking-wide">Refresh</span>
             </button>
 
             <!-- User Menu (Unchanged) -->
@@ -277,6 +355,8 @@
         </header>
 
         <!-- Main Content -->
+            <!-- Finished Matches Tab Button (added) -->
+            
         <div class="flex flex-1 overflow-hidden">
             <!-- Navigation Sidebar (Unchanged) -->
             <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2 overflow-y-auto">
@@ -296,6 +376,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
                     <span>📊 Statistics</span>
                 </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="finished-matches">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span>✅ Finished Matches</span>
+                </button>
                 <button id="admin-nav-button" class="hidden nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="admin">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                     <span>👑 Admin</span>
@@ -310,6 +394,23 @@
                   ======================= 
                 -->
                 <div id="all-matches-tab" class="tab-content">
+
+                    <!-- Summary Cards: Total / Staged / Pending -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4">
+                        <div class="bg-white rounded-xl shadow p-4">
+                            <div class="text-sm text-gray-500">Total Matches</div>
+                            <div class="text-2xl font-bold" id="card-total-matches">0</div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-4">
+                            <div class="text-sm text-gray-500">Matches Staged to Firebase</div>
+                            <div class="text-2xl font-bold" id="card-staged-matches">0</div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-4">
+                            <div class="text-sm text-gray-500">Pending Matches</div>
+                            <div class="text-2xl font-bold" id="card-pending-matches">0</div>
+                        </div>
+                    </div>
+    
                     <!-- REQ 7: Title and Button DIV removed -->
                     
                     <!-- REQ 7: Main Filters (Moved up) -->
@@ -483,7 +584,57 @@
                   TAB: Selections (UPDATED)
                   ======================= 
                 -->
-                <div id="selections-tab" class="tab-content hidden">
+                
+                <!-- =======================
+                  TAB: Finished Matches
+                  ======================= -->
+                <div id="finished-matches-tab" class="tab-content hidden">
+                    <h1 class="text-3xl font-bold text-navy mb-6">Finished Matches</h1>
+                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label for="filter-league" class="block text-sm font-medium text-gray-700">League</label>
+                                <select id="filter-league-finished" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">All Leagues</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filter-date-finished" class="block text-sm font-medium text-gray-700">Date</label>
+                                <select id="filter-date-finished" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">All Dates</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="apply-filters-finished" class="px-4 py-2 bg-emerald text-white rounded-lg">Apply Filters</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">✔</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match Result</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Goals</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="finished-matches-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+    
+<div id="selections-tab" class="tab-content hidden">
                     <h1 class="text-3xl font-bold text-navy mb-6">My Selections</h1>
                     
                     <!-- REQ 6: Summary Cards -->
@@ -567,6 +718,34 @@
                   ======================= 
                 -->
                 <div id="high-chance-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Date</label>
+                                <select id="filter-date-highchance" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">All Dates</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">League</label>
+                                <select id="filter-league-highchance" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">All Leagues</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Correct Score</label>
+                                <select id="filter-correctscore-highchance" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">Any</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Confidence %</label>
+                                <select id="filter-confidence-highchance" class="mt-1 block w-full rounded-lg border-gray-300">
+                                    <option value="">Any</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex items-center justify-between mb-6">
                         <h1 class="text-3xl font-bold text-navy">High Chance Matches</h1>
                         <p class="text-lg text-gray-600">Conf. ≥ 60% & Pred. Prob. > 50% & Prob. Rate > 45</p>
@@ -728,7 +907,30 @@
                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Create New User Form -->
+                    <div class="bg-white rounded-xl shadow-lg p-5 mb-6">
+                        <h3 class="text-lg font-semibold mb-3">Create New User</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="admin-new-username" placeholder="Full name" class="rounded-lg border-gray-300 p-2">
+                            <input type="email" id="admin-new-email" placeholder="Email" class="rounded-lg border-gray-300 p-2">
+                            <select id="admin-new-role" class="rounded-lg border-gray-300 p-2">
+                                <option value="Standard User">Standard User</option>
+                                <option value="Analyst">Analyst</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                            <input type="password" id="admin-new-password" placeholder="Password (min 6)" class="rounded-lg border-gray-300 p-2">
+                        </div>
+                        <div class="mt-4">
+                            <button id="admin-create-user-btn" class="px-4 py-2 bg-emerald text-white rounded-lg">Create User</button>
+                            <span id="admin-create-user-msg" class="text-sm ml-3"></span>
+                        </div>
+                    </div>
+
+                    <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
                                     <!-- Admin users list populated by JS -->
                                 </tbody>
                             </table>
@@ -1061,6 +1263,7 @@
             },
             filterButtons: {
                 pushToFirebase: document.getElementById('push-to-firebase-btn'),
+                refreshData: document.getElementById('refresh-data-btn'),
                 moreFilters: document.getElementById('more-filters-button'),
                 closeMoreFilters: document.getElementById('close-more-filters-modal'),
                 applyMain: document.getElementById('apply-filters-main'),
@@ -1266,6 +1469,37 @@
 
         // Signup Form Submission
         dom.signupForm.addEventListener('submit', (e) => {
+        // Admin Create User button handler
+        document.getElementById('admin-create-user-btn')?.addEventListener('click', async (ev) => {
+            ev.preventDefault();
+            const msgEl = document.getElementById('admin-create-user-msg');
+            msgEl.textContent = '';
+            const name = document.getElementById('admin-new-username').value.trim();
+            const email = document.getElementById('admin-new-email').value.trim();
+            const password = document.getElementById('admin-new-password').value;
+            const role = document.getElementById('admin-new-role').value;
+            if (!email || !password) {
+                msgEl.textContent = 'Email and password required.';
+                return;
+            }
+            try {
+                const userCred = await createUserWithEmailAndPassword(auth, email, password);
+                const u = userCred.user;
+                await set(ref(db, 'users/' + u.uid), {
+                    fullName: name,
+                    email: email,
+                    role: role || 'Standard User',
+                    status: 'Active',
+                    createdAt: new Date().toISOString()
+                });
+                msgEl.textContent = 'User created.';
+                fetchAdminUsers();
+            } catch (err) {
+                console.error('Admin create user error', err);
+                msgEl.textContent = getFriendlyAuthError(err.code) || 'Failed to create user.';
+            }
+        });
+
             e.preventDefault();
             dom.signupError.textContent = '';
             const name = dom.signupName.value;
@@ -1416,6 +1650,8 @@
                     });
                     // We must use the MatchKey *property* from the object, not the FB key
                     stagedKeys = new Set(fbMatches.map(m => m.MatchKey));
+                    // Expose firebase keys globally so other functions (e.g., Finished Matches tab) can access them
+                    window.firebaseKeys = stagedKeys;
                     console.log(`Loaded ${fbMatches.length} matches from Firebase.`);
                 }
             } catch (error) {
@@ -1756,11 +1992,12 @@
                 // Helper to get value securely
                 const getVal = (obj, key) => obj[key] || obj[sanitizeKey(key)];
                 // Apply High Chance criteria
-                filteredMatches = filteredMatches.filter(m => 
-                    getVal(m, "Confidence %") >= 60 &&
-                    getVal(m, "Predicted Probability (%)") > 50 &&
-                    getVal(m, "Probability Rate") > 45
-                );
+                filteredMatches = filteredMatches.filter(m => {
+                    const c = parseFloat(getVal(m, "Confidence %")) || 0;
+                    const pp = parseFloat(getVal(m, "Predicted Probability (%)")) || 0;
+                    const pr = parseFloat(getVal(m, "Probability Rate")) || 0;
+                    return c >= 60 && pp > 50 && pr > 45;
+                });
                 renderHighChanceTable();
                 updateSummaryCards('hc', filteredMatches); // REQ 6
                 dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
@@ -1769,6 +2006,14 @@
                 renderAllMatchesTable();
                 updateSummaryCards('all-matches', filteredMatches); // REQ 6
                 dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
+                dom.hcPagination.container.classList.add('hidden');
+            } else if (activeTab === 'finished-matches') {
+                // Finished Matches: only matches with Match Result filled AND staged to Firebase
+                const finished = allMatchesData.filter(m => (window.firebaseKeys && window.firebaseKeys.has(m.MatchKey)) || m.Staged === true || m.Staged === 'true'); // show all Firebase records
+                filteredMatches = finished; // reuse filteredMatches for rendering
+                renderAllMatchesTable();
+                updateSummaryCards('finished', filteredMatches);
+                dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
                 dom.hcPagination.container.classList.add('hidden');
             } else if (activeTab === 'selections') {
                 renderSelectionsTable(); // This function handles its own data and card update
@@ -1985,6 +2230,7 @@
                 return `
                     <tr class="${rowClass} hover:bg-gray-100">
                         <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
+                        <td class="px-2 py-4 whitespace-nowrap text-sm"><button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button></td>
                         <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
@@ -2010,6 +2256,7 @@
                  return `
                     <tr class="${rowClass} hover:bg-gray-100">
                         <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
+                        <td class="px-2 py-4 whitespace-nowrap text-sm"><button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button></td>
                         <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
                         <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
@@ -2129,6 +2376,15 @@
             dom.stats.totalPredictions.textContent = mainStats.totalCount;
             dom.stats.totalWins.textContent = mainStats.totalWins;
             dom.stats.winRate.textContent = `${winRate.toFixed(1)}%`;
+
+            // Update new overall summary cards
+            const totalMatchesCount = allMatchesData.length;
+            const stagedCount = allMatchesData.filter(m => m.Staged === true || m.Staged === 'true').length;
+            const pendingCount = allMatchesData.filter(m => !m['Match Result'] || ['N/A','Pending',''].includes(m['Match Result'])).length;
+            document.getElementById('card-total-matches') && (document.getElementById('card-total-matches').textContent = totalMatchesCount);
+            document.getElementById('card-staged-matches') && (document.getElementById('card-staged-matches').textContent = stagedCount);
+            document.getElementById('card-pending-matches') && (document.getElementById('card-pending-matches').textContent = pendingCount);
+
 
             // 2. Create helper to render charts
             const renderBarChart = (ctx, chartInstance, fieldName) => {
@@ -2290,7 +2546,36 @@
         dom.filters.globalSearch.addEventListener('input', applyFiltersAndRender);
         
         // Manual Push to Firebase (REQ 7: Button is now in header, listener is the same)
+        dom.filterButtons.refreshData.addEventListener('click', async () => {
+            setLoadingMessage('Refreshing data...');
+            dom.loadingSpinner.classList.remove('hidden');
+            try {
+                await fetchMatchData();
+                showNotification('Data refreshed.', 'success');
+            } catch (err) {
+                console.error('Refresh failed:', err);
+                showNotification('Failed to refresh data.', 'error');
+            } finally {
+                dom.loadingSpinner.classList.add('hidden');
+            }
+        });
+
         dom.filterButtons.pushToFirebase.addEventListener('click', async () => {
+        // Delegate: view details modal population (added fields: standings & power)
+        document.addEventListener('click', function(e) {
+            const v = e.target.closest('.view-details-btn');
+            if (!v) return;
+            const key = v.getAttribute('data-match-key');
+            const match = allMatchesData.find(m => m.MatchKey === key || m['MatchKey'] === key || m['Match Key'] === key);
+            if (!match) return;
+            // existing modal population function may exist; set additional fields here
+            document.getElementById('modal-home-standing') && (document.getElementById('modal-home-standing').textContent = match['Home Team Table Standing'] || match['Home Team TableStanding'] || match['HomeTableStanding'] || '-');
+            document.getElementById('modal-away-standing') && (document.getElementById('modal-away-standing').textContent = match['Away Team Table Standing'] || match['Away Team TableStanding'] || match['AwayTableStanding'] || '-');
+            document.getElementById('modal-home-power') && (document.getElementById('modal-home-power').textContent = match['Home Team Power'] || match['HomePower'] || '-');
+            document.getElementById('modal-away-power') && (document.getElementById('modal-away-power').textContent = match['Away Team Power'] || match['AwayPower'] || '-');
+        });
+
+    
             if (selections.length === 0) {
                 showNotification("No matches selected to push.", "info");
                 return;
@@ -2533,6 +2818,93 @@
           return key.replace(/[.#$[\]/%]/g, "_").replace(/\s+/g, "_");
         }
 
+
+    </script>
+
+
+    <script>
+    // Helpers: spinner & toast
+    function showSpinner(text="Loading..."){ document.getElementById("global-spinner-text").innerText = text; document.getElementById("global-spinner").classList.remove("hidden"); }
+    function hideSpinner(){ document.getElementById("global-spinner").classList.add("hidden"); }
+    function showToast(msg, bg="linear-gradient(90deg, var(--accent-1), var(--accent-2))", timeout=3500){
+        const t = document.getElementById("toast");
+        t.style.background = bg;
+        t.innerText = msg;
+        t.classList.remove("hidden");
+        setTimeout(()=> t.classList.add("hidden"), timeout);
+    }
+
+    // Fetch Firebase Finished Matches and render into same table renderer used by All Matches
+    async function fetchFirebaseMatches(){
+        const url = "https://datacompass360-3b5d9-default-rtdb.firebaseio.com/predictions.json";
+        try{
+            showSpinner("Loading Finished Matches from Firebase...");
+            const res = await fetch(url);
+            if(!res.ok) throw new Error("Firebase fetch failed: " + res.status);
+            const data = await res.json();
+            if(!data){
+                hideSpinner();
+                showToast("No records found in Firebase", "linear-gradient(90deg,var(--accent-3),var(--accent-2))");
+                return;
+            }
+            // Convert object keyed by push-id into array of records
+            const arr = Object.keys(data).map(k => {
+                const r = data[k];
+                r._fbKey = k; // keep reference
+                return r;
+            });
+            // Save to window for debugging and other modules
+            window.finishedMatchesFromFirebase = arr;
+            // Render table: try to call existing function renderMatchesIfExists or fallback to simple table render
+            if(typeof renderMatches === "function"){
+                renderMatches(arr, {targetTableId: "finished-matches-table"});
+            } else if(typeof renderMatchesToTable === "function"){
+                renderMatchesToTable(arr, "finished-matches-table");
+            } else {
+                // Fallback: create simple rows into #finished-matches-table tbody
+                const tbody = document.querySelector("#finished-matches-table tbody");
+                if(!tbody) throw new Error("Finished matches table element not present");
+                tbody.innerHTML = "";
+                arr.forEach((m, idx) => {
+                    const tr = document.createElement("tr");
+                    tr.className = "table-row-alt";
+                    tr.innerHTML = `<td>${m.MatchKey||""}</td><td>${m.League||""}</td><td>${m.Match_Result||m.MatchResult||""}</td><td>${m.Predicted_Outcome||m.Predicted_Outcome||""}</td><td>${m.Predicted_Probability_(_ )||m.Predicted_Probability_||m.Predicted_Probability||m["Predicted_Probability (%)"]||""}</td><td>${m.Probability_Rate||m.ProbabilityRate||m["Probability Rate"]||""}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+            hideSpinner();
+            showToast("Finished Matches loaded ("+arr.length+")", "linear-gradient(90deg,var(--accent-2),var(--accent-1))");
+        }catch(err){
+            hideSpinner();
+            console.error(err);
+            showToast("Error loading Firebase: " + err.message, "linear-gradient(90deg,var(--accent-4),var(--accent-3))", 6000);
+        }
+    }
+
+    // Wire tab switch: when Finished Matches tab shown, fetch data
+    document.addEventListener("click", function(e){
+        const btn = e.target.closest && e.target.closest(".nav-tab-button");
+        if(!btn) return;
+        const tab = btn.getAttribute("data-tab");
+        if(tab === "finished-matches"){
+            // small delay to allow tab UI to take effect
+            setTimeout(()=>{ fetchFirebaseMatches(); }, 120);
+        }
+    });
+
+    // Ensure High Chance tab uses sheet data: override filter function if present
+    if(typeof filterHighChanceFromSheet !== "function"){
+        // Provide fallback to filter existing allMatchesData (sheet-loaded)
+        function filterHighChanceFromSheet(allMatchesData){
+            if(!Array.isArray(allMatchesData)) return [];
+            return allMatchesData.filter(m=>{
+                const c = parseFloat(m["Confidence %"] || m.Confidence || 0) || 0;
+                const pp = parseFloat(m["Predicted Probability (%)"] || m.Predicted_Probability_ || m.Predicted_Probability || 0) || 0;
+                const pr = parseFloat(m["Probability Rate"] || m.Probability_Rate || m.ProbabilityRate || 0) || 0;
+                return c >= 60 && pp > 50 && pr > 45;
+            });
+        }
+    }
 
     </script>
 
