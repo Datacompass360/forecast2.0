@@ -610,6 +610,8 @@
                         </div>
                     </div>
 
+                    <!-- This table body 'finished-matches-table-body' is NOT the one being rendered to. 
+                         The main 'matches-table-body' is used for all tabs. -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -627,7 +629,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="finished-matches-table-body" class="bg-white divide-y divide-gray-200">
-                                    <!-- Populated by JS -->
+                                    <!-- This is NOT rendered to by the new logic. 'matches-table-body' is used instead. -->
                                 </tbody>
                             </table>
                         </div>
@@ -777,6 +779,8 @@
                     </div>
 
                     <!-- REQ 4: High Chance Table (UPDATED schema) -->
+                    <!-- This table body 'high-chance-table-body' is NOT the one being rendered to. 
+                         The main 'matches-table-body' is used for all tabs. -->
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-gold">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
@@ -798,7 +802,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="high-chance-table-body" class="bg-white divide-y divide-gray-200">
-                                    <!-- Rows populated by JS -->
+                                    <!-- This is NOT rendered to by the new logic. 'matches-table-body' is used instead. -->
                                 </tbody>
                             </table>
                         </div>
@@ -1155,7 +1159,12 @@
             "Home Win", "Draw", "Away Win", "Home FT", "Away FT"
         ];
 
-        let allMatchesData = [];    // Raw data from GSheet + Firebase
+        // --- UPDATED DATA STATE ---
+        let allMatchesData = [];        // Combined data from GSheet + Firebase (for lookups)
+        let googleSheetMatchesData = [];// Raw data from GSheet
+        let firebaseMatchesData = [];   // Raw data from Firebase
+        // --- END UPDATED DATA STATE ---
+
         let filteredMatches = [];   // Data after all filters
         let selections = [];      // Array of selected MatchKey
         let currentUser = null;
@@ -1629,7 +1638,7 @@
         async function fetchMatchData() {
             setLoadingMessage("Fetching data from Firebase...");
             dom.loadingSpinner.classList.remove('hidden');
-            let fbMatches = [];
+            firebaseMatchesData = []; // Use global var
             let stagedKeys = new Set();
             
             try {
@@ -1637,7 +1646,7 @@
                 const snapshot = await get(child(dbRef, 'predictions'));
                 if (snapshot.exists()) {
                     const fbData = snapshot.val();
-                    fbMatches = Object.keys(fbData).map(key => {
+                    firebaseMatchesData = Object.keys(fbData).map(key => {
                         // Data in FB is assumed to be already parsed
                         const match = fbData[key];
                         // Ensure MatchKey is present, use key if not
@@ -1649,10 +1658,10 @@
                         return match;
                     });
                     // We must use the MatchKey *property* from the object, not the FB key
-                    stagedKeys = new Set(fbMatches.map(m => m.MatchKey));
+                    stagedKeys = new Set(firebaseMatchesData.map(m => m.MatchKey));
                     // Expose firebase keys globally so other functions (e.g., Finished Matches tab) can access them
                     window.firebaseKeys = stagedKeys;
-                    console.log(`Loaded ${fbMatches.length} matches from Firebase.`);
+                    console.log(`Loaded ${firebaseMatchesData.length} matches from Firebase.`);
                 }
             } catch (error) {
                 console.error("Firebase Read Error:", error);
@@ -1671,77 +1680,15 @@
                 const sheetMatchesRaw = parseCSV(csvText);
                 console.log(`Loaded ${sheetMatchesRaw.length} rows from Google Sheet.`);
 
-                const sheetMatches = sheetMatchesRaw.map(parseMatchObject);
-                
-                const matchesToStage = [];
-                const nonStagedSheetMatches = [];
-
-                // 3. Compare, filter, and identify matches to auto-stage
-                for (const match of sheetMatches) {
-                    if (!match.MatchKey) {
-                        console.warn("Skipping row with no MatchKey:", match);
-                        continue;
-                    }
-                    
-                    const isStaged = stagedKeys.has(match.MatchKey);
-                    const hasResult = match["Match Result"] && !["N/A", "Pending", ""].includes(match["Match Result"]);
-
-                    if (hasResult && !isStaged) {
-                        // This match has a result and is not in Firebase. Stage it.
-                        match.Staged = true;
-                        matchesToStage.push(match);
-                    } else if (!isStaged) {
-                        // This match has no result and is not in Firebase. Add to main list.
-                        match.Staged = false;
-                        nonStagedSheetMatches.push(match);
-                    }
-                    // If isStaged is true, we do nothing; the Firebase version will be used.
-                }
-
-                // 4. Auto-stage new, completed matches
-                if (matchesToStage.length > 0) {
-                    setLoadingMessage(`Staging ${matchesToStage.length} new completed matches...`);
-                    console.log(`Auto-staging ${matchesToStage.length} matches.`);
-                    
-                    const stagingPromises = matchesToStage.map(match => {
-                        const safeKey = sanitizeKey(match.MatchKey); 
-                        if (!safeKey) {
-                            console.warn("Skipping staging for match with invalid key:", match.MatchKey);
-                            return Promise.resolve(); // Don't block other promises
-                        }
-                        // FIX: Sanitize the match *object* before setting it
-                        const safeMatchData = sanitizeObject(match); 
-                        return set(ref(db, 'predictions/' + safeKey), safeMatchData);
-                    });
-                    
-                    try {
-                        await Promise.all(stagingPromises);
-                        // Add newly staged matches to our in-memory Firebase list
-                        fbMatches.push(...matchesToStage);
-                        console.log(`Staging complete.`);
-                    } catch (stagingError) {
-                         console.error("Google Sheet Fetch Error:", stagingError);
-                         // This error is caught here from the original stack trace
-                         // The `sanitizeObject` call should fix this.
-                    }
-                }
+                // 3. Store Google Sheet data
+                googleSheetMatchesData = sheetMatchesRaw.map(parseMatchObject).filter(m => m.MatchKey); // Ensure MatchKey exists
+                console.log(`Parsed ${googleSheetMatchesData.length} matches from Google Sheet.`);
 
                 // 5. Combine lists. Firebase data takes precedence.
-                allMatchesData = [...fbMatches, ...nonStagedSheetMatches];
+                allMatchesData = [...googleSheetMatchesData, ...firebaseMatchesData]; // Combined list for lookups
                 
-                // Sort by date (as text)
-                allMatchesData.sort((a, b) => {
-                    // REQ 2: Treat date as text. Simple string comparison.
-                    // This might not be perfectly chronological if formats differ,
-                    // but it adheres to the "treat as text" rule.
-                    // A reverse sort is often desired (newest first).
-                    if (a.Date > b.Date) return -1;
-                    if (a.Date < b.Date) return 1;
-                    return 0;
-                });
-                
-                populateLeagueFilter();
-                populateDateFilter(); // REQ 1: Populate new date filter
+                populateLeagueFilter(googleSheetMatchesData);
+                populateDateFilter(googleSheetMatchesData); // REQ 1: Populate new date filter
                 applyFiltersAndRender();
                 if (activeTab === 'statistics') {
                     renderStatistics();
@@ -1751,17 +1698,17 @@
                 console.error("Google Sheet Fetch Error:", error);
                 showNotification("Could not load data from Google Sheets.", "error");
                 // If sheet fails, still show Firebase data
-                allMatchesData = fbMatches;
-                populateLeagueFilter();
-                populateDateFilter(); // REQ 1
+                allMatchesData = firebaseMatchesData; // Show only FB data if sheet fails
+                populateLeagueFilter(firebaseMatchesData);
+                populateDateFilter(firebaseMatchesData); // REQ 1
                 applyFiltersAndRender();
             } finally {
                 dom.loadingSpinner.classList.add('hidden');
             }
         }
         
-        function populateLeagueFilter() {
-            const leagues = [...new Set(allMatchesData.map(match => match.League))].sort();
+        function populateLeagueFilter(data) {
+            const leagues = [...new Set((data || []).map(match => match.League))].sort();
             dom.filters.league.innerHTML = '<option value="">All Leagues</option>'; // Reset
             leagues.forEach(league => {
                 if (league) {
@@ -1774,8 +1721,8 @@
         }
         
         // REQ 1: New function to populate date filter
-        function populateDateFilter() {
-            const dates = [...new Set(allMatchesData.map(match => match.Date))];
+        function populateDateFilter(data) {
+            const dates = [...new Set((data || []).map(match => match.Date))];
             // Sort raw text dates
             dates.sort().reverse(); // Show newest (or highest string value) first
             dom.filters.date.innerHTML = '<option value="">All Dates</option>'; // Reset
@@ -1924,8 +1871,31 @@
                 aPowerBttsMax: parseFloat(dom.filters.aPowerBttsMax.value) || null,
             };
 
+            // -------------------------------------------
+            // DATA SOURCE SELECTION (NEW LOGIC)
+            // -------------------------------------------
+            let sourceData = [];
+            if (activeTab === 'all-matches') {
+                sourceData = googleSheetMatchesData;
+            } else if (activeTab === 'high-chance') {
+                sourceData = googleSheetMatchesData; // Will be filtered for HC criteria later
+            } else if (activeTab === 'finished-matches') {
+                sourceData = firebaseMatchesData;
+            } else if (activeTab === 'selections') {
+                renderSelectionsTable(); // Handles its own logic
+                return;
+            } else if (activeTab === 'statistics') {
+                renderStatistics(); // Handles its own logic
+                return;
+            } else if (activeTab === 'admin') {
+                return; // No filtering
+            } else {
+                return; // Default do nothing
+            }
+            // -------------------------------------------
+
             // 2. Filter data
-            filteredMatches = allMatchesData.filter(match => {
+            filteredMatches = sourceData.filter(match => {
                 // Helper for min/max checks
                 const inRange = (val, min, max) => {
                     const numVal = parseFloat(val);
@@ -2008,12 +1978,11 @@
                 dom.pagination.prev.parentElement.parentElement.classList.remove('hidden');
                 dom.hcPagination.container.classList.add('hidden');
             } else if (activeTab === 'finished-matches') {
-                // Finished Matches: only matches with Match Result filled AND staged to Firebase
-                const finished = allMatchesData.filter(m => (window.firebaseKeys && window.firebaseKeys.has(m.MatchKey)) || m.Staged === true || m.Staged === 'true'); // show all Firebase records
-                filteredMatches = finished; // reuse filteredMatches for rendering
-                renderAllMatchesTable();
-                updateSummaryCards('finished', filteredMatches);
-                dom.pagination.prev.parentElement.parentElement.classList.add('hidden');
+                // Finished Matches: sourceData is already firebaseMatchesData
+                // The filters above have been applied to it.
+                renderAllMatchesTable(); // Re-use the main table render function
+                updateSummaryCards('finished', filteredMatches); // Use a different prefix for summary cards if needed
+                dom.pagination.prev.parentElement.parentElement.classList.remove('hidden'); // Show pagination
                 dom.hcPagination.container.classList.add('hidden');
             } else if (activeTab === 'selections') {
                 renderSelectionsTable(); // This function handles its own data and card update
@@ -2093,7 +2062,8 @@
             });
 
             // REQ 3 & 4: Colspan updated from 18 to 16 (removed 3, added 1)
-            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="16" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
+            // Use the main matches-table-body for all tabs
+            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="17" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
             
             // Update pagination
             dom.pagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
@@ -2115,7 +2085,8 @@
             });
 
             // REQ 4: Colspan updated from 12 to 13 (added 1)
-            dom.highChanceTableBody.innerHTML = tableHtml || `<tr><td colspan="13" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
+            // Render to the *main* table body
+            dom.matchesTableBody.innerHTML = tableHtml || `<tr><td colspan="17" class="text-center p-6 text-gray-500">No high-chance matches found.</td></tr>`;
         
             // Update high chance pagination
             dom.hcPagination.start.textContent = totalMatches > 0 ? startIndex + 1 : 0;
@@ -2127,7 +2098,7 @@
         
         function renderSelectionsTable() {
             let tableHtml = '';
-            // Find full match objects from `allMatchesData` using `selections` (which holds MatchKeys)
+            // Find full match objects from `allMatchesData` (which has both sources) using `selections`
             const selectedMatches = selections.map(key => allMatchesData.find(m => m.MatchKey === key)).filter(Boolean); // .filter(Boolean) removes undefined
             
             selectedMatches.forEach(match => {
@@ -2226,55 +2197,34 @@
             const odds = `${getVal(match, "Home Odds") || 'N/A'} / ${getVal(match, "Draw Odds") || 'N/A'} / ${getVal(match, "Away Odds") || 'N/A'}`;
             
             // Different columns for different tables
-            if (tableType === 'all-matches') {
-                return `
-                    <tr class="${rowClass} hover:bg-gray-100">
-                        <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
-                        <td class="px-2 py-4 whitespace-nowrap text-sm"><button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button></td>
-                        <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Correct Score") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Outcome") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Expected Outcome") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result || 'N/A'}</td>
-                        <!-- REQ 4: Total Goals added -->
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(result)}</td>
-                        <!-- REQ 3: H Win, Draw, A Win removed -->
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
-                        </td>
-                    </tr>
-                `;
-            } else if (tableType === 'high-chance') {
-                 return `
-                    <tr class="${rowClass} hover:bg-gray-100">
-                        <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
-                        <td class="px-2 py-4 whitespace-nowrap text-sm"><button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button></td>
-                        <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Correct Score") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result || 'N/A'}</td>
-                        <!-- REQ 4: Total Goals added -->
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(result)}</td>
-                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
-                        </td>
-                    </tr>
-                `;
-            }
+            // This now renders ALL columns for all tabs, as they share the main table
+            // We just hide/show columns via CSS if needed, but here we render all
+            // as 'all-matches' tab is the superset of columns
+            return `
+                <tr class="${rowClass} hover:bg-gray-100">
+                    <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald focus:ring-emerald select-match-checkbox" data-match-key="${match.MatchKey}" ${isSelected ? 'checked' : ''}></td>
+                    <td class="px-2 py-4 whitespace-nowrap text-sm">${isStarred ? '⭐' : ''}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${match.Date || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Home Team") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${getVal(match, "Away Team") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">${odds}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Correct Score") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${prediction || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${getVal(match, "Confidence %") || 'N/A'}%</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Outcome") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Predicted Probability (%)") || 'N/A'}%</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Expected Outcome") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${getVal(match, "Probability Rate") || 'N/A'}</td>
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${result || 'N/A'}</td>
+                    <!-- REQ 4: Total Goals added -->
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${calculateTotalGoals(result)}</td>
+                    <!-- REQ 3: H Win, Draw, A Win removed -->
+                    <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${match.MatchKey}">View</button>
+                    </td>
+                </tr>
+            `;
+            
         }
         
         function renderUsersTable(users) {
@@ -2324,8 +2274,13 @@
                 expectedOutcome: document.getElementById('chart-expected-outcome')?.getContext('2d'),
             };
 
-            if (!chartCtx.prediction || allMatchesData.length === 0) {
+            // UPDATED: Stats are based on Firebase data only
+            if (!chartCtx.prediction || firebaseMatchesData.length === 0) {
                 console.warn("Charts context not found or no data.");
+                // Clear old charts if they exist
+                if (charts.prediction) charts.prediction.destroy();
+                if (charts.predictedOutcome) charts.predictedOutcome.destroy();
+                if (charts.expectedOutcome) charts.expectedOutcome.destroy();
                 return;
             }
             
@@ -2343,7 +2298,8 @@
                     totalCount: 0
                 };
                 
-                allMatchesData.forEach(match => {
+                // UPDATED: Use firebaseMatchesData
+                firebaseMatchesData.forEach(match => {
                     const actualOutcome = getMatchOutcome(getVal(match, "Match Result"));
                     let prediction = getVal(match, fieldName);
                     
@@ -2378,9 +2334,11 @@
             dom.stats.winRate.textContent = `${winRate.toFixed(1)}%`;
 
             // Update new overall summary cards
-            const totalMatchesCount = allMatchesData.length;
-            const stagedCount = allMatchesData.filter(m => m.Staged === true || m.Staged === 'true').length;
-            const pendingCount = allMatchesData.filter(m => !m['Match Result'] || ['N/A','Pending',''].includes(m['Match Result'])).length;
+            // UPDATED: Card logic based on new data sources
+            const totalMatchesCount = googleSheetMatchesData.length + firebaseMatchesData.length;
+            const stagedCount = firebaseMatchesData.length;
+            const pendingCount = googleSheetMatchesData.filter(m => !m['Match Result'] || ['N/A','Pending',''].includes(m['Match Result'])).length;
+            
             document.getElementById('card-total-matches') && (document.getElementById('card-total-matches').textContent = totalMatchesCount);
             document.getElementById('card-staged-matches') && (document.getElementById('card-staged-matches').textContent = stagedCount);
             document.getElementById('card-pending-matches') && (document.getElementById('card-pending-matches').textContent = pendingCount);
@@ -2447,6 +2405,7 @@
         }
         
         function openMatchDetailsModal(matchKey) {
+            // UPDATED: Search the combined allMatchesData
             const match = allMatchesData.find(m => m.MatchKey === matchKey);
             if (!match) {
                 showNotification("Error: Could not find match details.", "error");
@@ -2566,6 +2525,7 @@
             const v = e.target.closest('.view-details-btn');
             if (!v) return;
             const key = v.getAttribute('data-match-key');
+            // UPDATED: Search the combined allMatchesData
             const match = allMatchesData.find(m => m.MatchKey === key || m['MatchKey'] === key || m['Match Key'] === key);
             if (!match) return;
             // existing modal population function may exist; set additional fields here
@@ -2586,6 +2546,7 @@
             
             let successCount = 0;
             const pushPromises = selections.map(async (matchKey) => {
+                // UPDATED: Search the combined allMatchesData
                 const match = allMatchesData.find(m => m.MatchKey === matchKey);
                 if (match) {
                     try {
@@ -2612,21 +2573,24 @@
             
             // Clear selections after pushing
             selections = [];
-            applyFiltersAndRender(); // Re-render to clear checkboxes
+            // Refresh data to reflect changes
+            await fetchMatchData();
         });
 
         // Pagination
         dom.pagination.prev.addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
-                renderAllMatchesTable();
+                // Re-render based on active tab
+                if(activeTab === 'all-matches' || activeTab === 'finished-matches') renderAllMatchesTable();
             }
         });
         dom.pagination.next.addEventListener('click', () => {
             const totalMatches = filteredMatches.length;
             if (currentPage * rowsPerPage < totalMatches) {
                 currentPage++;
-                renderAllMatchesTable();
+                // Re-render based on active tab
+                if(activeTab === 'all-matches' || activeTab === 'finished-matches') renderAllMatchesTable();
             }
         });
         
@@ -2724,7 +2688,7 @@
             }
             
             // Re-render relevant tables
-            if (activeTab === 'all-matches' || activeTab === 'high-chance') {
+            if (activeTab === 'all-matches' || activeTab === 'high-chance' || activeTab === 'finished-matches') {
                 // Find the checkbox and update its state (no full re-render needed)
                 const checkbox = document.querySelector(`.select-match-checkbox[data-match-key="${matchKey}"]`);
                 if (checkbox) checkbox.checked = isSelected;
@@ -2745,6 +2709,7 @@
         }
         
         function exportSelectionsToCSV() {
+            // UPDATED: Search the combined allMatchesData
             const selectedMatches = selections.map(key => allMatchesData.find(m => m.MatchKey === key)).filter(Boolean);
             if (selectedMatches.length === 0) {
                 showNotification("No matches selected to export.", "info");
@@ -2821,269 +2786,7 @@
 
     </script>
 
-
-    <script>
-    // Helpers: spinner & toast
-    function showSpinner(text="Loading..."){ document.getElementById("global-spinner-text").innerText = text; document.getElementById("global-spinner").classList.remove("hidden"); }
-    function hideSpinner(){ document.getElementById("global-spinner").classList.add("hidden"); }
-    function showToast(msg, bg="linear-gradient(90deg, var(--accent-1), var(--accent-2))", timeout=3500){
-        const t = document.getElementById("toast");
-        t.style.background = bg;
-        t.innerText = msg;
-        t.classList.remove("hidden");
-        setTimeout(()=> t.classList.add("hidden"), timeout);
-    }
-
-    // Fetch Firebase Finished Matches and render into same table renderer used by All Matches
-    async function fetchFirebaseMatches(){
-        const url = "https://datacompass360-3b5d9-default-rtdb.firebaseio.com/predictions.json";
-        try{
-            showSpinner("Loading Finished Matches from Firebase...");
-            const res = await fetch(url);
-            if(!res.ok) throw new Error("Firebase fetch failed: " + res.status);
-            const data = await res.json();
-            if(!data){
-                hideSpinner();
-                showToast("No records found in Firebase", "linear-gradient(90deg,var(--accent-3),var(--accent-2))");
-                return;
-            }
-            // Convert object keyed by push-id into array of records
-            const arr = Object.keys(data).map(k => {
-                const r = data[k];
-                r._fbKey = k; // keep reference
-                return r;
-            });
-            // Save to window for debugging and other modules
-            window.finishedMatchesFromFirebase = arr;
-            // Render table: try to call existing function renderMatchesIfExists or fallback to simple table render
-            if(typeof renderMatches === "function"){
-                renderMatches(arr, {targetTableId: "finished-matches-table"});
-            } else if(typeof renderMatchesToTable === "function"){
-                renderMatchesToTable(arr, "finished-matches-table");
-            } else {
-                // Fallback: create simple rows into #finished-matches-table tbody
-                const tbody = document.querySelector("#finished-matches-table tbody");
-                if(!tbody) throw new Error("Finished matches table element not present");
-                tbody.innerHTML = "";
-                arr.forEach((m, idx) => {
-                    const tr = document.createElement("tr");
-                    tr.className = "table-row-alt";
-                    tr.innerHTML = `<td>${m.MatchKey||""}</td><td>${m.League||""}</td><td>${m.Match_Result||m.MatchResult||""}</td><td>${m.Predicted_Outcome||m.Predicted_Outcome||""}</td><td>${m.Predicted_Probability_(_ )||m.Predicted_Probability_||m.Predicted_Probability||m["Predicted_Probability (%)"]||""}</td><td>${m.Probability_Rate||m.ProbabilityRate||m["Probability Rate"]||""}</td>`;
-                    tbody.appendChild(tr);
-                });
-            }
-            hideSpinner();
-            showToast("Finished Matches loaded ("+arr.length+")", "linear-gradient(90deg,var(--accent-2),var(--accent-1))");
-        }catch(err){
-            hideSpinner();
-            console.error(err);
-            showToast("Error loading Firebase: " + err.message, "linear-gradient(90deg,var(--accent-4),var(--accent-3))", 6000);
-        }
-    }
-
-    // Wire tab switch: when Finished Matches tab shown, fetch data
-    document.addEventListener("click", function(e){
-        const btn = e.target.closest && e.target.closest(".nav-tab-button");
-        if(!btn) return;
-        const tab = btn.getAttribute("data-tab");
-        if(tab === "finished-matches"){
-            // small delay to allow tab UI to take effect
-            setTimeout(()=>{ fetchFirebaseMatches(); }, 120);
-        }
-    });
-
-    // Ensure High Chance tab uses sheet data: override filter function if present
-    if(typeof filterHighChanceFromSheet !== "function"){
-        // Provide fallback to filter existing allMatchesData (sheet-loaded)
-        function filterHighChanceFromSheet(allMatchesData){
-            if(!Array.isArray(allMatchesData)) return [];
-            return allMatchesData.filter(m=>{
-                const c = parseFloat(m["Confidence %"] || m.Confidence || 0) || 0;
-                const pp = parseFloat(m["Predicted Probability (%)"] || m.Predicted_Probability_ || m.Predicted_Probability || 0) || 0;
-                const pr = parseFloat(m["Probability Rate"] || m.Probability_Rate || m.ProbabilityRate || 0) || 0;
-                return c >= 60 && pp > 50 && pr > 45;
-            });
-        }
-    }
-
-    </script>
-
-
-/* ==== Added helpers: render into shared matches table body ==== */
-function renderRowsToMatchesBody(data, tableType='all-matches') {
-    const tbody = document.getElementById('matches-table-body');
-    if(!tbody) return;
-    if(!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="16" class="text-center p-6 text-gray-500">No matches found.</td></tr>`;
-        return;
-    }
-    // Prefer existing createMatchRowHtml if present
-    if(typeof createMatchRowHtml === 'function') {
-        tbody.innerHTML = data.map(m => createMatchRowHtml(m, tableType)).join('');
-    } else {
-        // Fallback basic row builder
-        tbody.innerHTML = data.map(m => {
-            return `<tr class="hover:bg-gray-50">
-                <td class="px-2 py-4 whitespace-nowrap"><input type="checkbox" class="rounded text-emerald select-match-checkbox" data-match-key="${m.MatchKey||''}"></td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${m.Date||''}</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${m['Home Team']||''}</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${m['Away Team']||''}</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900">${m.Prediction||''}</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">${m['Confidence %']||''}%</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${m['Match Result']||''}</td>
-                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                    <button class="text-red-600 hover:text-red-800 remove-selection-btn" data-match-key="${m.MatchKey||''}">Delete</button>
-                    <button class="text-emerald hover:text-navy view-details-btn" data-match-key="${m.MatchKey||''}">View</button>
-                </td>
-            </tr>`;
-        }).join('');
-    }
-}
-
-/* ==== Finished Matches: fetch from Firebase and render into shared table body ==== */
-async function loadFinishedMatchesFromFirebaseAndRender() {
-    const url = "https://datacompass360-3b5d9-default-rtdb.firebaseio.com/predictions.json";
-    try {
-        // show spinner if available
-        const spinner = document.getElementById('loading-spinner');
-        const msg = document.getElementById('loading-message');
-        if(spinner) spinner.classList.remove('hidden');
-        if(msg) msg.textContent = 'Loading Finished Matches...';
-        const res = await fetch(url);
-        if(!res.ok) throw new Error('Firebase fetch failed: ' + res.status);
-        const json = await res.json();
-        if(!json) {
-            renderRowsToMatchesBody([], 'finished');
-            if(spinner) spinner.classList.add('hidden');
-            return;
-        }
-        const arr = Object.keys(json).map(k => ({...json[k], _fbKey: k}));
-        // store for debugging
-        window.finishedMatchesFromFirebase = arr;
-        // Render into shared table body
-        renderRowsToMatchesBody(arr, 'finished');
-    } catch(err) {
-        console.error(err);
-    } finally {
-        const spinner = document.getElementById('loading-spinner');
-        if(spinner) spinner.classList.add('hidden');
-    }
-}
-
-/* ==== High Chance: use sheet-derived allMatchesData but exclude Firebase-staged => render into shared table body ==== */
-function getHighChanceDatasetFromAllMatches() {
-    // prefer allMatchesData (populated by fetchMatchData)
-    const source = Array.isArray(window.allMatchesData) ? window.allMatchesData : [];
-    // exclude staged/Firebase records
-    const filteredSource = source.filter(m => {
-        const staged = (m.Staged === true || m.Staged === 'true');
-        const inFirebase = window.firebaseKeys && window.firebaseKeys.has && window.firebaseKeys.has(m.MatchKey);
-        return !staged && !inFirebase;
-    });
-    // apply numeric HC criteria
-    const hc = filteredSource.filter(m => {
-        const c = parseFloat(m['Confidence %'] || m.Confidence || 0) || 0;
-        const pp = parseFloat(m['Predicted Probability (%)'] || m.Predicted_Probability_ || m.Predicted_Probability || 0) || 0;
-        const pr = parseFloat(m['Probability Rate'] || m.Probability_Rate || m.ProbabilityRate || 0) || 0;
-        return c >= 60 && pp > 50 && pr > 45;
-    });
-    return hc;
-}
-
-function applyHighChanceFiltersAndRender() {
-    let data = getHighChanceDatasetFromAllMatches();
-    // apply UI filter inputs for high chance
-    const league = document.getElementById('filter-league-highchance')?.value || '';
-    const date = document.getElementById('filter-date-highchance')?.value || '';
-    const correct = document.getElementById('filter-correctscore-highchance')?.value || '';
-    const confidence = document.getElementById('filter-confidence-highchance')?.value || '';
-    const global = document.getElementById('global-search')?.value?.toLowerCase() || '';
-    if(league) data = data.filter(m => (m.League||'').toString() === league);
-    if(date) data = data.filter(m => (m.Date||'').toString() === date);
-    if(correct) data = data.filter(m => ((m['Correct Score']||m.CorrectScore||'')+'').includes(correct));
-    if(confidence) {
-        const confNum = parseFloat(confidence) || 0;
-        data = data.filter(m => (parseFloat(m['Confidence %']||m.Confidence||0) || 0) >= confNum);
-    }
-    if(global) {
-        data = data.filter(m => {
-            return Object.values(m).join(' ').toLowerCase().includes(global);
-        });
-    }
-    renderRowsToMatchesBody(data, 'high-chance');
-}
-
-/* Wire high-chance filter inputs live */
-['filter-league-highchance','filter-date-highchance','filter-correctscore-highchance','filter-confidence-highchance','global-search'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', applyHighChanceFiltersAndRender);
-    if(el) el.addEventListener('change', applyHighChanceFiltersAndRender);
-});
-
-/* When tab switches to high-chance, render */
-document.querySelectorAll('.nav-tab-button[data-tab="high-chance"]').forEach(btn=>{
-    btn.addEventListener('click', ()=> {
-        // small delay to ensure activeTab is set elsewhere
-        setTimeout(()=>{ applyHighChanceFiltersAndRender(); }, 80);
-    });
-});
-
-/* When tab switches to finished-matches, fetch firebase and render */
-document.querySelectorAll('.nav-tab-button[data-tab="finished-matches"]').forEach(btn=>{
-    btn.addEventListener('click', ()=> {
-        setTimeout(()=>{ loadFinishedMatchesFromFirebaseAndRender(); }, 80);
-    });
-});
-
-/* ==== Enhance openMatchDetailsModal to append new fields into modal comparison table ==== */
-const origOpen = window.openMatchDetailsModal;
-function enhancedOpenMatchDetailsModal(matchKey) {
-    // try to find match in allMatchesData, then in finishedMatchesFromFirebase
-    let match = Array.isArray(window.allMatchesData) ? window.allMatchesData.find(m=>m.MatchKey===matchKey) : null;
-    if(!match && Array.isArray(window.finishedMatchesFromFirebase)) {
-        match = window.finishedMatchesFromFirebase.find(m=>m.MatchKey===matchKey || m._fbKey===matchKey) || null;
-    }
-    if(!match) {
-        // fallback: try searching by partial key
-        if(Array.isArray(window.allMatchesData)) {
-            match = window.allMatchesData.find(m => (m.MatchKey||'').includes(matchKey));
-        }
-    }
-    if(!match) {
-        if(typeof showNotification === 'function') showNotification("Error: Could not find match details.", "error");
-        return;
-    }
-    // Call original if exists to populate base fields
-    if(typeof origOpen === 'function') {
-        try { origOpen(matchKey); } catch(e){ console.warn('origOpen failed', e); }
-    }
-    // Now append rows for additional fields into modal-comparison-table
-    const tbody = document.getElementById('modal-comparison-table');
-    if(!tbody) return;
-    // Remove existing rows for our added fields if present
-    // We'll rebuild whole comparison table rows for these entries appended at end
-    // Prepare values with fallbacks
-    const homeStanding = match['Home Team Table Standing'] || match['Home Team TableStanding'] || match['HomeTeamTableStanding'] || '-';
-    const awayStanding = match['Away Team Table Standing'] || match['Away Team TableStanding'] || match['AwayTeamTableStanding'] || '-';
-    const homePower = match['Home Team Power'] || match['HomeTeamPower'] || '-';
-    const awayPower = match['Away Team Power'] || match['AwayTeamPower'] || '-';
-    // Append rows
-    const rows = [];
-    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Home Team Table Standing</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homeStanding}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayStanding}</td></tr>`);
-    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Away Team Table Standing</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homeStanding}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayStanding}</td></tr>`);
-    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Home Team Power</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homePower}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayPower}</td></tr>`);
-    rows.push(`<tr><td class="px-4 py-3 text-sm font-medium text-gray-700">Away Team Power</td><td class="px-4 py-3 text-center text-sm text-gray-900">${homePower}</td><td class="px-4 py-3 text-center text-sm text-gray-900">${awayPower}</td></tr>`);
-    // Append to existing tbody
-    tbody.insertAdjacentHTML('beforeend', rows.join(''));
-    // Show modal
-    const modal = document.getElementById('match-details-modal');
-    if(modal) modal.classList.remove('hidden');
-}
-if(typeof window.openMatchDetailsModal === 'function') {
-    window.openMatchDetailsModal = enhancedOpenMatchDetailsModal;
-} else {
-    window.openMatchDetailsModal = enhancedOpenMatchDetailsModal;
-}
+    <!-- Removed conflicting supplementary script blocks -->
 
 </body>
 </html>
