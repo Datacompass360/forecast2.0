@@ -110,6 +110,20 @@
         #over-2-5-table th:nth-child(13) { width: 7%; } /* Prob */
         #over-2-5-table th:nth-child(14) { width: 7%; } /* Total Goals */
 
+        /* Table: Senders */
+        #senders-table-body th:nth-child(1) { width: 15%; } /* Status */
+        #senders-table-body th:nth-child(2) { width: 30%; } /* Email */
+        #senders-table-body th:nth-child(3) { width: 25%; } /* Name */
+        #senders-table-body th:nth-child(4) { width: 15%; } /* Type */
+        #senders-table-body th:nth-child(5) { width: 15%; } /* Actions */
+
+        /* Table: Scheduling */
+        #scheduling-table-body th:nth-child(1) { width: 15%; } /* Status */
+        #scheduling-table-body th:nth-child(2) { width: 25%; } /* Subject */
+        #scheduling-table-body th:nth-child(3) { width: 20%; } /* Recipients */
+        #scheduling-table-body th:nth-child(4) { width: 15%; } /* Recurrence */
+        #scheduling-table-body th:nth-child(5) { width: 15%; } /* Next Send */
+        #scheduling-table-body th:nth-child(6) { width: 10%; } /* Actions */
     </style>
 </head>
 <body class="bg-gray-100">
@@ -153,18 +167,13 @@
         <div class="flex flex-1 overflow-hidden">
             <!-- Navigation Sidebar -->
             <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2 overflow-y-auto">
-                <a href="index.html" class="nav-link w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 16h.01" />
-                    </svg>
-                    <span>🏆 Dashboard</span>
+                <!-- Link to index.html (if it exists) or reload -->
+                <a href="#" onclick="window.location.reload();" class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="hot-picks">
+                    <i class="fas fa-fire-alt h-5 w-5 text-center"></i>
+                    <span class="ml-0.5">🔥 Hot Picks</span>
                 </a>
                 
                 <!-- Merged Tab Navigation -->
-                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="hot-picks">
-                    <i class="fas fa-fire-alt h-5 w-5 text-center"></i>
-                    <span class="ml-0.5">🔥 Hot Picks</span>
-                </button>
                 <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="email-management">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2" />
@@ -359,22 +368,10 @@
                                     </tr>
                                 </thead>
                                 <tbody id="senders-table-body" class="bg-white divide-y divide-gray-200">
-                                    <!-- Mock Data -->
+                                    <!-- Populated by Firebase -->
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Connected
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">reports@datacompass360.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">DataCompass Reports</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Gmail (OAuth)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Edit</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
+                                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading senders...</td>
                                     </tr>
-                                    <!-- More rows would be added by JS -->
                                 </tbody>
                             </table>
                         </div>
@@ -409,21 +406,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="scheduling-table-body" class="bg-white divide-y divide-gray-200">
-                                    <!-- Mock Data -->
+                                    <!-- Populated by Firebase -->
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                Pending
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Weekly Report</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">team@example.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Weekly (Mon 9am)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-11-03 09:00</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Edit</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
+                                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">Loading scheduled emails...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -443,39 +428,12 @@
                             <i class="fas fa-plus mr-2"></i>Design New Report
                         </button>
                     </div>
-
-                    <!-- Scheduled Reports Table -->
-                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recurrence</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="reports-table-body" class="bg-white divide-y divide-gray-200">
-                                    <!-- Mock Data -->
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Weekly Win/Loss Report</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Weekly (Sun 8pm)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-11-02 20:00</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Success
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Edit</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-xl font-semibold text-navy mb-4">Scheduled Reports</h2>
+                        <p class="text-gray-600 mb-4">Reports designed here will appear in the "Email Scheduling" tab once saved.</p>
+                        <!-- Note: The table for "Scheduled Reports" was redundant with "Email Scheduling"
+                             This tab now just serves to open the "Design New Report" modal.
+                             The results of designing a report are saved to the "scheduled" list. -->
                     </div>
                 </div>
 
@@ -518,9 +476,9 @@
                     
                     <!-- OAuth Section -->
                     <div id="oauth-section">
-                        <p class="text-sm text-gray-600">You will be redirected to authenticate with your provider after saving.</p>
-                        <button type="button" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium w-full">
-                            <i class="fab fa-google mr-2"></i>Connect with Google
+                        <p class="text-sm text-gray-600">OAuth requires a backend server to handle the authentication flow. This form will only save the configuration.</p>
+                        <button type="button" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium w-full opacity-50 cursor-not-allowed">
+                            <i class="fab fa-google mr-2"></i>Connect with Google (Requires Backend)
                         </button>
                     </div>
 
@@ -542,7 +500,7 @@
                                 <input type="text" id="smtp-user" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                             </div>
                             <div>
-                                <label for="smtp-pass" class="block text-sm font-medium text-gray-700">Password</label>
+                                <label for="smtp-pass" class="block text-sm font-medium text-gray-700">Password / App Password</label>
                                 <input type="password" id="smtp-pass" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
                             </div>
                         </div>
@@ -555,11 +513,11 @@
                             </select>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> Credentials will be securely stored and encrypted on the server.</p>
+                    <p class="text-xs text-red-600 font-medium"><i class="fas fa-exclamation-triangle mr-1"></i> For security, passwords are NOT saved to the database from this form. A backend (e.g., Cloud Function) is required to securely store and use credentials.</p>
                 </div>
                 <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
                     <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
-                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save & Test Connection</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save Configuration</button>
                 </div>
             </form>
         </div>
@@ -579,8 +537,8 @@
                     <div>
                         <label for="email-sender" class="block text-sm font-medium text-gray-700">Sender</label>
                         <select id="email-sender" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                            <option value="reports@datacompass360.com">DataCompass Reports (reports@datacompass360.com)</option>
-                            <!-- More options populated by JS -->
+                            <!-- Populated by JS from Firebase senders -->
+                            <option value="">Loading senders...</option>
                         </select>
                     </div>
                     <div>
@@ -603,6 +561,7 @@
                             file:text-sm file:font-semibold
                             file:bg-emerald/10 file:text-emerald
                             hover:file:bg-emerald/20">
+                        <p class="text-xs text-gray-500 mt-1">Note: File uploads require a backend and Firebase Storage.</p>
                     </div>
                     <div>
                         <label for="email-recurrence" class="block text-sm font-medium text-gray-700">Recurrence</label>
@@ -620,7 +579,6 @@
                     </div>
                 </div>
                 <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
-                    <button type="button" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Preview</button>
                     <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
                     <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Schedule Email</button>
                 </div>
@@ -641,15 +599,17 @@
                 <div class="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Left Side: Filters -->
                     <div class="space-y-4">
-                        <h4 class="text-lg font-semibold text-navy">1. Select Data</h4>
+                        <h4 class="text-lg font-semibold text-navy">1. Report Details</h4>
                         <div>
-                            <label for="report-name" class="block text-sm font-medium text-gray-700">Report Name</label>
+                            <label for="report-name" class="block text-sm font-medium text-gray-700">Report Name (Email Subject)</label>
                             <input type="text" id="report-name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="e.g., Weekly High-Confidence Picks">
                         </div>
                         <div>
-                            <label for="report-teams" class="block text-sm font-medium text-gray-700">Teams</label>
-                            <input type="text" id="report-teams" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="Search teams or leave blank for all...">
+                            <label for="report-body" class="block text-sm font-medium text-gray-700">Email Body</label>
+                            <textarea id="report-body" rows="4" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="Here is your weekly report for high-confidence picks."></textarea>
                         </div>
+                        
+                        <h4 class="text-lg font-semibold text-navy mt-4">2. Data Filters</h4>
                         <div>
                             <label for="report-league" class="block text-sm font-medium text-gray-700">League</label>
                             <select id="report-league" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
@@ -662,38 +622,42 @@
                             <input type="number" id="report-confidence" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="e.g., 60">
                         </div>
                     </div>
-                    <!-- Right Side: Fields -->
+                    <!-- Right Side: Fields & Schedule -->
                     <div class="space-y-4">
-                         <h4 class="text-lg font-semibold text-navy">2. Select Fields to Include</h4>
-                         <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-3 bg-gray-50 rounded-lg border">
+                         <h4 class="text-lg font-semibold text-navy">3. Fields to Include in PDF</h4>
+                         <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-3 bg-gray-50 rounded-lg border">
                             <!-- Field Checkboxes -->
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Date</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Home Team</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Away Team</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Odds (H/D/A)</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Prediction</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Confidence %</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Pred. Outcome</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Pred. Prob. %</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Exp. Outcome</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Prob. Rate</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Match Result</label></div>
-                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Total Goals</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Date" class="rounded text-emerald mr-2" checked> Date</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Home Team" class="rounded text-emerald mr-2" checked> Home Team</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Away Team" class="rounded text-emerald mr-2" checked> Away Team</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Odds" class="rounded text-emerald mr-2"> Odds (H/D/A)</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Prediction" class="rounded text-emerald mr-2" checked> Prediction</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Confidence" class="rounded text-emerald mr-2" checked> Confidence %</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Pred. Outcome" class="rounded text-emerald mr-2"> Pred. Outcome</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Pred. Prob." class="rounded text-emerald mr-2"> Pred. Prob. %</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Exp. Outcome" class="rounded text-emerald mr-2"> Exp. Outcome</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Prob. Rate" class="rounded text-emerald mr-2"> Prob. Rate</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Match Result" class="rounded text-emerald mr-2"> Match Result</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" name="report_field" value="Total Goals" class="rounded text-emerald mr-2"> Total Goals</label></div>
                          </div>
-                    </div>
-                </div>
-                 <!-- Bottom Section: Schedule -->
-                <div class="p-6 space-y-4 border-t">
-                    <h4 class="text-lg font-semibold text-navy">3. Schedule & Recipients</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                         <p class="text-xs text-gray-500">Note: PDF Generation requires a backend (e.g., Cloud Function with Puppeteer or jspdf). This will save the *request*.</p>
+                         
+                         <h4 class="text-lg font-semibold text-navy mt-4">4. Schedule & Recipients</h4>
+                         <div>
+                            <label for="report-sender" class="block text-sm font-medium text-gray-700">Sender</label>
+                            <select id="report-sender" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                <!-- Populated by JS from Firebase senders -->
+                                <option value="">Loading senders...</option>
+                            </select>
+                        </div>
+                         <div>
                             <label for="report-email-recipients" class="block text-sm font-medium text-gray-700">Recipients (comma-separated)</label>
                             <input type="text" id="report-email-recipients" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="team@example.com">
                         </div>
                         <div>
-                            <label for="report-recurrence" class="block text-sm font-medium text-gray-700">Recurrence</label>
+                            <label for="report-recurrence" class="block text-sm font-medium text-gray-700">Recurrence</pre>
                             <select id="report-recurrence" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
-                                <option value="one-off">One-off (Send Now)</option>
+                                <option value="one-off">One-off (Run Now)</option>
                                 <option value="daily">Daily</option>
                                 <option value="weekly">Weekly</option>
                                 <option value="custom">Custom (Cron)</option>
@@ -701,10 +665,10 @@
                         </div>
                     </div>
                 </div>
+                 
                 <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
-                    <button type="button" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Generate Preview</button>
                     <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
-                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save & Schedule</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save & Schedule Report</button>
                 </div>
             </form>
         </div>
@@ -712,14 +676,38 @@
 
 
     <!-- =================================================================== -->
-    <!-- JAVASCRIPT (MERGED)                                                 -->
-    <!-- =================================================================== -->
+    <!-- JAVASCRIPT (MERGED & UPDATED WITH FIREBASE)                         -->
+    <!-- =================================S================================== -->
     <script type="module">
+        // -------------------------------------------
+        // FIREBASE IMPORTS (From Instructions)
+        // -------------------------------------------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        // --- FIX: Replaced 'onSnapshot' with 'onValue' ---
+        import { getDatabase, ref, set, push, get, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+        // -------------------------------------------
+        // FIREBASE CONFIG (From Instructions)
+        // -------------------------------------------
+        // IMPORTANT: Replace placeholders with your actual Firebase project settings
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY", // Get this from your Firebase project settings
+          authDomain: "datacompass360-3b5d9.firebaseapp.com",
+          databaseURL: "https://datacompass360-3b5d9-default-rtdb.firebaseio.com/", // This matches your instructions
+          projectId: "datacompass360-3b5d9",
+          storageBucket: "datacompass360-3b5d9.appspot.com",
+          messagingSenderId: "YOUR_SENDER_ID", // Get this from Firebase
+          appId: "YOUR_APP_ID" // Get this from Firebase
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
         // -------------------------------------------
         // CONFIG
         // -------------------------------------------
         
-        // --- !!! UPDATED URL !!! ---
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv';
         
         // Hot Picks Config
@@ -758,26 +746,26 @@
                 popup: document.getElementById('notification-popup'),
                 message: document.getElementById('notification-message'),
             },
-            // Modals (from email)
+            // Modals
             modals: {
                 addSender: document.getElementById('add-sender-modal'),
                 scheduleEmail: document.getElementById('schedule-email-modal'),
                 designReport: document.getElementById('design-report-modal'),
             },
-            // Buttons (from email)
+            // Buttons
             buttons: {
                 addEmail: document.getElementById('add-email-btn'),
                 scheduleEmail: document.getElementById('schedule-email-btn'),
                 designReport: document.getElementById('design-report-btn'),
                 closeModal: document.querySelectorAll('.close-modal-btn'),
             },
-            // Forms (from email)
+            // Forms
             forms: {
                 addSender: document.getElementById('add-sender-form'),
                 scheduleEmail: document.getElementById('schedule-email-form'),
                 designReport: document.getElementById('design-report-form'),
             },
-            // Form Controls (from email)
+            // Form Controls
             senderType: document.getElementById('sender-type'),
             oauthSection: document.getElementById('oauth-section'),
             smtpSection: document.getElementById('smtp-section'),
@@ -805,7 +793,15 @@
                 prevBtn: document.getElementById('prev-btn-2'),
                 nextBtn: document.getElementById('next-btn-2'),
                 pageInfo: document.getElementById('page-info-2'),
-            }
+            },
+            // Email Integration Tables
+            sendersTableBody: document.getElementById('senders-table-body'),
+            schedulingTableBody: document.getElementById('scheduling-table-body'),
+            
+            // Email Integration Selects
+            emailSenderSelect: document.getElementById('email-sender'),
+            reportSenderSelect: document.getElementById('report-sender'),
+            reportLeagueFilter: document.getElementById('report-league'),
         };
 
         // -------------------------------------------
@@ -983,9 +979,8 @@
             dom.table2.leagueFilter.innerHTML += leagueOptions;
             
             // Also populate report designer league dropdown
-            const reportLeagueFilter = document.getElementById('report-league');
-            if (reportLeagueFilter) {
-                reportLeagueFilter.innerHTML += leagueOptions;
+            if (dom.reportLeagueFilter) {
+                dom.reportLeagueFilter.innerHTML += leagueOptions;
             }
         }
 
@@ -1119,9 +1114,76 @@
             dom.table2.nextBtn.disabled = table2CurrentPage === totalPages || totalPages === 0;
         }
 
+        // -------------------------------------------
+        // FIREBASE: RENDER SENDER TABLE (NEW)
+        // -------------------------------------------
+        function renderSendersTable(senders) {
+            let html = '';
+            let senderOptions = '<option value="">Select a sender...</option>';
+
+            if (!senders || Object.keys(senders).length === 0) {
+                html = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No senders configured. Add one to get started.</td></tr>';
+                senderOptions = '<option value="">No senders available</option>';
+            } else {
+                for (const id in senders) {
+                    const sender = senders[id];
+                    html += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${sender.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                                    ${sender.status || 'Pending'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${formatCell(sender.email)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCell(sender.name)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCell(sender.type)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                <button class="text-red-600 hover:text-red-800 delete-sender-btn" data-id="${id}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    senderOptions += `<option value="${id}">${sender.name || sender.email} (${sender.email})</option>`;
+                }
+            }
+            dom.sendersTableBody.innerHTML = html;
+            dom.emailSenderSelect.innerHTML = senderOptions;
+            dom.reportSenderSelect.innerHTML = senderOptions;
+        }
+
+        // -------------------------------------------
+        // FIREBASE: RENDER SCHEDULE TABLE (NEW)
+        // -------------------------------------------
+        function renderScheduledTable(schedules) {
+            let html = '';
+            if (!schedules || Object.keys(schedules).length === 0) {
+                html = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No emails scheduled.</td></tr>';
+            } else {
+                 for (const id in schedules) {
+                    const job = schedules[id];
+                    html += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    ${job.status || 'Pending'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${formatCell(job.subject)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCell(job.recipients)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatCell(job.recurrence)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${job.recurrence === 'one-off' ? 'Once' : 'Recurring'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                <button class="text-red-600 hover:text-red-800 delete-schedule-btn" data-id="${id}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+            dom.schedulingTableBody.innerHTML = html;
+        }
+
         
         // -------------------------------------------
-        // EVENT LISTENERS (Merged)
+        // EVENT LISTENERS (Merged & Updated)
         // -------------------------------------------
 
         // --- Tab Navigation ---
@@ -1158,9 +1220,9 @@
                     dom.oauthSection.classList.remove('hidden');
                     dom.smtpSection.classList.add('hidden');
                     if (e.target.value === 'gmail') {
-                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-google mr-2"></i>Connect with Google';
+                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-google mr-2"></i>Connect with Google (Requires Backend)';
                     } else {
-                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-microsoft mr-2"></i>Connect with Outlook';
+                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-microsoft mr-2"></i>Connect with Outlook (Requires Backend)';
                     }
                 }
             });
@@ -1176,32 +1238,122 @@
             });
         }
 
-        // --- Form Submissions (Mocked, from email) ---
+        // --- Form Submissions (UPDATED with Firebase) ---
+
+        // Add Sender Form
         if(dom.forms.addSender) {
-            dom.forms.addSender.addEventListener('submit', (e) => {
+            dom.forms.addSender.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const email = document.getElementById('sender-email').value;
-                console.log('TODO: Submit sender details to backend.', { email: email, type: dom.senderType.value });
-                dom.modals.addSender.classList.add('hidden');
-                showNotification(`Sender ${email} added (mock).`, 'success');
+                const name = document.getElementById('sender-name').value;
+                const type = document.getElementById('sender-type').value;
+                
+                const senderData = {
+                    email: email,
+                    name: name,
+                    type: type,
+                    status: "pending", // Default status
+                    lastTest: new Date().toISOString()
+                };
+
+                if (type === 'smtp') {
+                    senderData.smtp = {
+                        host: document.getElementById('smtp-host').value,
+                        port: document.getElementById('smtp-port').value,
+                        user: document.getElementById('smtp-user').value,
+                        security: document.getElementById('smtp-tls').value,
+                        // WARNING: Do not save password to DB from client
+                    };
+                }
+
+                try {
+                    // Save to Firebase at /emails/senders/
+                    await push(ref(db, 'emails/senders'), senderData);
+                    showNotification(`Sender ${email} configuration saved.`, 'success');
+                    dom.forms.addSender.reset();
+                    dom.modals.addSender.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error saving sender: ", error);
+                    showNotification(`Error saving sender: ${error.message}`, 'error');
+                }
             });
         }
+
+        // Schedule Email Form
         if(dom.forms.scheduleEmail) {
-            dom.forms.scheduleEmail.addEventListener('submit', (e) => {
+            dom.forms.scheduleEmail.addEventListener('submit', async (e) => {
                 e.preventDefault();
+                const senderId = document.getElementById('email-sender').value;
+                const recipients = document.getElementById('email-recipients').value;
                 const subject = document.getElementById('email-subject').value;
-                console.log('TODO: Submit email schedule to backend.', { subject: subject });
-                dom.modals.scheduleEmail.classList.add('hidden');
-                showNotification(`Email "${subject}" scheduled (mock).`, 'success');
+                const body = document.getElementById('email-body').value;
+                let recurrence = document.getElementById('email-recurrence').value;
+
+                if (recurrence === 'custom') {
+                    recurrence = document.getElementById('email-cron').value;
+                }
+                
+                const scheduleData = {
+                    senderId: senderId,
+                    recipients: recipients,
+                    subject: subject,
+                    body: body,
+                    recurrence: recurrence,
+                    status: "pending",
+                    createdAt: new Date().toISOString()
+                    // Note: Attachment handling requires Firebase Storage & backend logic
+                };
+
+                try {
+                    // Save to Firebase at /emails/scheduled/
+                    await push(ref(db, 'emails/scheduled'), scheduleData);
+                    showNotification(`Email "${subject}" scheduled successfully.`, 'success');
+                    dom.forms.scheduleEmail.reset();
+                    dom.modals.scheduleEmail.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error scheduling email: ", error);
+                    showNotification(`Error scheduling email: ${error.message}`, 'error');
+                }
             });
         }
+        
+        // Design Report Form
         if(dom.forms.designReport) {
-            dom.forms.designReport.addEventListener('submit', (e) => {
+            dom.forms.designReport.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                const reportName = document.getElementById('report-name').value;
-                console.log('TODO: Submit report design to backend.', { reportName: reportName });
-                dom.modals.designReport.classList.add('hidden');
-                showNotification(`Report "${reportName}" scheduled (mock).`, 'success');
+
+                // Get all selected fields
+                const fields = [];
+                document.querySelectorAll('input[name="report_field"]:checked').forEach((checkbox) => {
+                    fields.push(checkbox.value);
+                });
+
+                const reportJob = {
+                    type: "report", // Differentiate from simple email
+                    senderId: document.getElementById('report-sender').value,
+                    recipients: document.getElementById('report-email-recipients').value,
+                    subject: document.getElementById('report-name').value,
+                    body: document.getElementById('report-body').value,
+                    recurrence: document.getElementById('report-recurrence').value,
+                    status: "pending",
+                    createdAt: new Date().toISOString(),
+                    reportConfig: {
+                        league: document.getElementById('report-league').value,
+                        minConfidence: document.getElementById('report-confidence').value,
+                        fields: fields
+                    }
+                };
+                
+                try {
+                    // Save to Firebase at /emails/scheduled/
+                    await push(ref(db, 'emails/scheduled'), reportJob);
+                    showNotification(`Report "${reportJob.subject}" scheduled successfully.`, 'success');
+                    dom.forms.designReport.reset();
+                    dom.modals.designReport.classList.add('hidden');
+                } catch (error) {
+                    console.error("Error scheduling report: ", error);
+                    showNotification(`Error scheduling report: ${error.message}`, 'error');
+                }
             });
         }
 
@@ -1250,9 +1402,41 @@
                 renderTable2();
             }
         });
+
+        // --- FIREBASE DELETE LISTENERS (NEW) ---
+        
+        // Delete Sender
+        dom.sendersTableBody.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-sender-btn')) {
+                const id = e.target.dataset.id;
+                if (id) {
+                    try {
+                        await remove(ref(db, `emails/senders/${id}`));
+                        showNotification('Sender deleted successfully.', 'success');
+                    } catch (error) {
+                        showNotification(`Error deleting sender: ${error.message}`, 'error');
+                    }
+                }
+            }
+        });
+
+        // Delete Schedule
+        dom.schedulingTableBody.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-schedule-btn')) {
+                const id = e.target.dataset.id;
+                if (id) {
+                    try {
+                        await remove(ref(db, `emails/scheduled/${id}`));
+                        showNotification('Scheduled item deleted.', 'success');
+                    } catch (error) {
+                        showNotification(`Error deleting item: ${error.message}`, 'error');
+                    }
+                }
+            }
+        });
         
         // -------------------------------------------
-        // INITIALIZATION (Merged)
+        // INITIALIZATION (Merged & Updated)
         // -------------------------------------------
         
         // Set default tab on page load
@@ -1265,6 +1449,28 @@
 
         // Load data for Hot Picks tables
         fetchData();
+
+        // --- FIREBASE REALTIME LISTENERS (NEW) ---
+        try {
+            // Listen for senders
+            const sendersRef = ref(db, 'emails/senders');
+            // --- FIX: Replaced 'onSnapshot' with 'onValue' ---
+            onValue(sendersRef, (snapshot) => {
+                const data = snapshot.val();
+                renderSendersTable(data);
+            });
+
+            // Listen for schedules
+            const scheduledRef = ref(db, 'emails/scheduled');
+            // --- FIX: Replaced 'onSnapshot' with 'onValue' ---
+            onValue(scheduledRef, (snapshot) => {
+                const data = snapshot.val();
+                renderScheduledTable(data);
+            });
+        } catch (error) {
+            showNotification('Error connecting to Firebase. Check your config and API key.', 'error');
+            console.error("Firebase connection error:", error);
+        }
         
     </script>
 </body>
