@@ -57,7 +57,7 @@
         }
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: #f1f1ff; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #00A86B; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #007a4e; }
         
@@ -83,28 +83,32 @@
         }
         
         /* Set specific column widths for readability */
-        /* Table 1: Frequent Winners */
-        #frequent-winners-table th:nth-child(1) { width: 12%; } /* Confidence % */
-        #frequent-winners-table th:nth-child(2) { width: 15%; } /* Prediction */
-        #frequent-winners-table th:nth-child(3) { width: 15%; } /* Predicted Outcome */
-        #frequent-winners-table th:nth-child(4) { width: 12%; } /* Match Result */
-        #frequent-winners-table th:nth-child(5) { width: 15%; } /* Predicted Prob (%) */
-        #frequent-winners-table th:nth-child(6) { width: 15%; } /* Expected Outcome */
-        #frequent-winners-table th:nth-child(7) { width: 16%; } /* Probability */
+        /* Table 1: Frequent Winners (9 columns) */
+        #frequent-winners-table th:nth-child(1) { width: 10%; } /* Confidence % */
+        #frequent-winners-table th:nth-child(2) { width: 13%; } /* Prediction */
+        #frequent-winners-table th:nth-child(3) { width: 13%; } /* Predicted Outcome */
+        #frequent-winners-table th:nth-child(4) { width: 10%; } /* Match Result */
+        #frequent-winners-table th:nth-child(5) { width: 14%; } /* Home Team */
+        #frequent-winners-table th:nth-child(6) { width: 14%; } /* Away Team */
+        #frequent-winners-table th:nth-child(7) { width: 12%; } /* Predicted Prob (%) */
+        #frequent-winners-table th:nth-child(8) { width: 12%; } /* Expected Outcome */
+        #frequent-winners-table th:nth-child(9) { width: 12%; } /* Probability */
 
-        /* Table 2: Over 2.5 */
-        #over-2-5-table th:nth-child(1) { width: 8%; } /* H Avg S */
-        #over-2-5-table th:nth-child(2) { width: 8%; } /* H Avg C */
-        #over-2-5-table th:nth-child(3) { width: 8%; } /* A Avg S */
-        #over-2-5-table th:nth-child(4) { width: 8%; } /* A Avg C */
-        #over-2-5-table th:nth-child(5) { width: 8%; } /* Conf % */
-        #over-2-5-table th:nth-child(6) { width: 10%; } /* Prediction */
-        #over-2-5-table th:nth-child(7) { width: 8%; } /* Pred Out */
-        #over-2-5-table th:nth-child(8) { width: 8%; } /* Pred Prob */
-        #over-2-5-table th:nth-child(9) { width: 8%; } /* Result */
-        #over-2-5-table th:nth-child(10) { width: 8%; } /* Exp Out */
-        #over-2-5-table th:nth-child(11) { width: 8%; } /* Prob */
-        #over-2-5-table th:nth-child(12) { width: 8%; } /* Total Goals */
+        /* Table 2: Over 2.5 (14 columns) */
+        #over-2-5-table th:nth-child(1) { width: 7%; } /* H Avg S */
+        #over-2-5-table th:nth-child(2) { width: 7%; } /* H Avg C */
+        #over-2-5-table th:nth-child(3) { width: 7%; } /* A Avg S */
+        #over-2-5-table th:nth-child(4) { width: 7%; } /* A Avg C */
+        #over-2-5-table th:nth-child(5) { width: 12%; } /* Home Team */
+        #over-2-5-table th:nth-child(6) { width: 12%; } /* Away Team */
+        #over-2-5-table th:nth-child(7) { width: 7%; } /* Conf % */
+        #over-2-5-table th:nth-child(8) { width: 8%; } /* Prediction */
+        #over-2-5-table th:nth-child(9) { width: 7%; } /* Pred Out */
+        #over-2-5-table th:nth-child(10) { width: 7%; } /* Pred Prob */
+        #over-2-5-table th:nth-child(11) { width: 7%; } /* Result */
+        #over-2-5-table th:nth-child(12) { width: 7%; } /* Exp Out */
+        #over-2-5-table th:nth-child(13) { width: 7%; } /* Prob */
+        #over-2-5-table th:nth-child(14) { width: 7%; } /* Total Goals */
 
     </style>
 </head>
@@ -231,10 +235,13 @@
                             <table id="frequent-winners-table" class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
+                                        <!-- Updated Headers -->
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence %</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Outcome</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match Result</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Prob (%)</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Outcome</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
@@ -289,10 +296,13 @@
                             <table id="over-2-5-table" class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
+                                        <!-- Updated Headers -->
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Avg S</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Avg C</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Avg S</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Avg C</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Home Team</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Away Team</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf %</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
                                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred Out</th>
@@ -1007,15 +1017,19 @@
             // 3. Generate HTML
             let html = '';
             if (paginatedData.length === 0) {
-                html = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
+                // Updated colspan to 9
+                html = '<tr><td colspan="9" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
             } else {
                 paginatedData.forEach(row => {
+                    // Updated row template
                     html += `
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Confidence %'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Prediction'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Outcome'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Match Result'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Home Team'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Away Team'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Probability (%)'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Expected Outcome'])}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Probability'])}</td>
@@ -1069,18 +1083,22 @@
             // 3. Generate HTML
             let html = '';
             if (paginatedData.length === 0) {
-                html = '<tr><td colspan="12" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
+                // Updated colspan to 14
+                html = '<tr><td colspan="14" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
             } else {
                 paginatedData.forEach(row => {
                     const totalGoals = calculateTotalGoals(row['Match Result']);
                     const rowClass = totalGoals >= 3 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-gray-50';
                     
+                    // Updated row template
                     html += `
                         <tr class="${rowClass}">
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Hteam Avg Scored'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Hteam Avg Conceded'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Ateam Avg Scored'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Ateam Avg Conceded'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Home Team'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Away Team'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Confidence %'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Prediction'])}</td>
                             <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Outcome'])}</td>
