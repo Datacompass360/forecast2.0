@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Integration - DataCompass 360</title>
+    
+    <!-- Favicon Placeholder -->
+    <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
+
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- 3. Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- 4. Custom Tailwind Configuration & Styles -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'navy': '#001f3f',
+                        'emerald': '#00A86B',
+                        'gold': '#FFD700',
+                        'light-gray': '#f0f4f8',
+                    },
+                    fontFamily: {
+                        'sans': ['Poppins', 'sans-serif'],
+                        'body': ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', 'sans-serif';
+        }
+        /* Style for active nav tab */
+        .nav-tab-button.active {
+            background-color: #00A86B; /* Emerald */
+            color: white;
+            font-weight: 600;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #00A86B; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #007a4e; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- =================================================================== -->
+    <!-- NOTIFICATION POPUP (Replaces alert())                               -->
+    <!-- =================================================================== -->
+    <div id="notification-popup" class="hidden fixed top-5 right-5 z-[100] p-4 rounded-lg shadow-lg text-white transition-all duration-300 max-w-sm">
+        <span id="notification-message"></span>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MAIN APPLICATION WRAPPER                                            -->
+    <!-- =================================================================== -->
+    <div class="h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-navy text-white shadow-lg flex items-center justify-between px-6 py-3 z-10">
+            <div class="flex items-center space-x-3">
+                <!-- Logo -->
+                <div class="p-2 rounded-full bg-white">
+                    <svg class="w-8 h-8 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>
+                        <polygon points="12 4 14 8 12 10 10 8" class="text-gold" fill="currentColor"></polygon>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold">DataCompass 360 - Email Integration</h1>
+            </div>
+            
+            <!-- User Menu (Placeholder) -->
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <div class="text-sm text-gray-300">Welcome,</div>
+                    <div id="user-email" class="font-medium">Admin User</div>
+                </div>
+                <a href="index.html" title="Back to Dashboard" class="bg-emerald text-white rounded-full p-2.5 hover:bg-opacity-90 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Navigation Sidebar -->
+            <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2 overflow-y-auto">
+                <a href="index.html" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 16h.01" />
+                    </svg>
+                    <span>🏆 Dashboard</span>
+                </a>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="email-management">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Sender Management</span>
+                </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="email-scheduling">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>Email Scheduling</span>
+                </button>
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="report-designer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Report Designer</span>
+                </button>
+            </nav>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-y-auto bg-gray-100 p-6">
+                
+                <!-- 
+                  =======================
+                  TAB: Email Management
+                  ======================= 
+                -->
+                <div id="email-management-tab" class="tab-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold text-navy">Sender Email Management</h1>
+                        <button id="add-email-btn" class="px-5 py-2 bg-emerald text-white rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i>Add New Sender
+                        </button>
+                    </div>
+
+                    <!-- Configured Senders Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email Address</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Display Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="senders-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Mock Data -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Connected
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">reports@datacompass360.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">DataCompass Reports</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Gmail (OAuth)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Edit</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                Auth Required
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">admin@datacompass360.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Admin</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Outlook (OAuth)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Re-authenticate</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                Broken
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">alerts@old-server.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Old Alerts</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">SMTP</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Edit</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <!-- More rows would be added by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Email Scheduling
+                  ======================= 
+                -->
+                <div id="email-scheduling-tab" class="tab-content hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold text-navy">Email Scheduling</h1>
+                        <button id="schedule-email-btn" class="px-5 py-2 bg-emerald text-white rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i>Schedule New Email
+                        </button>
+                    </div>
+
+                    <!-- Scheduled Emails Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recurrence</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Send</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scheduling-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Mock Data -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                Pending
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Weekly Report</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">team@example.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Weekly (Mon 9am)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-11-03 09:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Edit</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Sent
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">High-Chance Picks</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">vip-list@example.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">One-off</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-27 10:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">View Log</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                Failed
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Daily Summary</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">admin@example.com</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Daily (8am)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-28 08:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-blue-600 hover:text-blue-800">Retry</button>
+                                            <button class="text-emerald hover:text-navy">View Error</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Report Designer
+                  ======================= 
+                -->
+                <div id="report-designer-tab" class="tab-content hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold text-navy">Report Designer & Scheduler</h1>
+                        <button id="design-report-btn" class="px-5 py-2 bg-emerald text-white rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i>Design New Report
+                        </button>
+                    </div>
+
+                    <!-- Scheduled Reports Table -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recurrence</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Run</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Run Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-table-body" class="bg-white divide-y divide-gray-200">
+                                    <!-- Mock Data -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Weekly Win/Loss Report</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Weekly (Sun 8pm)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-11-02 20:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                Success
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Edit</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Daily High-Confidence Picks</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Daily (10am)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-29 10:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                Pending
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                            <button class="text-emerald hover:text-navy">Edit</button>
+                                            <button class="text-red-600 hover:text-red-800">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- MODALS                                                              -->
+    <!-- =================================================================== -->
+
+    <!-- Add/Edit Sender Modal -->
+    <div id="add-sender-modal" class="hidden fixed inset-0 z-30 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all" role="dialog">
+            <form id="add-sender-form">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-navy">Add New Sender</h3>
+                    <button type="button" class="close-modal-btn text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="sender-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input type="email" id="sender-email" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                    </div>
+                    <div>
+                        <label for="sender-name" class="block text-sm font-medium text-gray-700">Display Name (Optional)</label>
+                        <input type="text" id="sender-name" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                    </div>
+                    <div>
+                        <label for="sender-type" class="block text-sm font-medium text-gray-700">Authentication Type</label>
+                        <select id="sender-type" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <option value="gmail">Gmail (OAuth)</option>
+                            <option value="outlook">Outlook (OAuth)</option>
+                            <option value="smtp">SMTP Credentials</option>
+                        </select>
+                    </div>
+                    
+                    <!-- OAuth Section -->
+                    <div id="oauth-section">
+                        <p class="text-sm text-gray-600">You will be redirected to authenticate with your provider after saving.</p>
+                        <button type="button" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium w-full">
+                            <i class="fab fa-google mr-2"></i>Connect with Google
+                        </button>
+                    </div>
+
+                    <!-- SMTP Section -->
+                    <div id="smtp-section" class="hidden space-y-4 pt-4 border-t">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="smtp-host" class="block text-sm font-medium text-gray-700">SMTP Host</label>
+                                <input type="text" id="smtp-host" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="smtp.example.com">
+                            </div>
+                            <div>
+                                <label for="smtp-port" class="block text-sm font-medium text-gray-700">SMTP Port</label>
+                                <input type="number" id="smtp-port" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="587">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                <label for="smtp-user" class="block text-sm font-medium text-gray-700">Username</label>
+                                <input type="text" id="smtp-user" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            </div>
+                            <div>
+                                <label for="smtp-pass" class="block text-sm font-medium text-gray-700">Password</label>
+                                <input type="password" id="smtp-pass" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="smtp-tls" class="block text-sm font-medium text-gray-700">Security</label>
+                            <select id="smtp-tls" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                <option value="tls">TLS</option>
+                                <option value="ssl">SSL</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500"><i class="fas fa-lock mr-1"></i> Credentials will be securely stored and encrypted on the server.</p>
+                </div>
+                <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                    <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save & Test Connection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Schedule Email Modal -->
+    <div id="schedule-email-modal" class="hidden fixed inset-0 z-30 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl transform transition-all" role="dialog">
+            <form id="schedule-email-form">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-navy">Schedule New Email</h3>
+                    <button type="button" class="close-modal-btn text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    <div>
+                        <label for="email-sender" class="block text-sm font-medium text-gray-700">Sender</label>
+                        <select id="email-sender" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <option value="reports@datacompass360.com">DataCompass Reports (reports@datacompass360.com)</option>
+                            <!-- More options populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="email-recipients" class="block text-sm font-medium text-gray-700">Recipients (comma-separated)</label>
+                        <input type="text" id="email-recipients" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="user1@example.com, user2@example.com">
+                    </div>
+                    <div>
+                        <label for="email-subject" class="block text-sm font-medium text-gray-700">Subject</label>
+                        <input type="text" id="email-subject" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                    </div>
+                    <div>
+                        <label for="email-body" class="block text-sm font-medium text-gray-700">Body (HTML or plain text)</label>
+                        <textarea id="email-body" rows="10" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="Hello,&#10;&#10;Here is your report."></textarea>
+                    </div>
+                    <div>
+                        <label for="email-attachments" class="block text-sm font-medium text-gray-700">Attachments (PDFs)</label>
+                        <input type="file" id="email-attachments" multiple accept=".pdf" class="mt-1 block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-emerald/10 file:text-emerald
+                            hover:file:bg-emerald/20">
+                    </div>
+                    <div>
+                        <label for="email-recurrence" class="block text-sm font-medium text-gray-700">Recurrence</label>
+                        <select id="email-recurrence" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                            <option value="one-off">One-off</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="custom">Custom (Cron)</option>
+                        </select>
+                    </div>
+                    <div id="custom-recurrence-section" class="hidden">
+                         <label for="email-cron" class="block text-sm font-medium text-gray-700">Cron String</label>
+                        <input type="text" id="email-cron" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="* 9 * * 1">
+                        <p class="text-xs text-gray-500 mt-1">e.g., "* 9 * * 1" for every Monday at 9am. Uses server timezone.</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                    <button type="button" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Preview</button>
+                    <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Schedule Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Designer Modal -->
+    <div id="design-report-modal" class="hidden fixed inset-0 z-30 bg-black bg-opacity-60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl transform transition-all" role="dialog">
+            <form id="design-report-form">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-navy">Design & Schedule Report</h3>
+                    <button type="button" class="close-modal-btn text-gray-400 hover:text-gray-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Side: Filters -->
+                    <div class="space-y-4">
+                        <h4 class="text-lg font-semibold text-navy">1. Select Data</h4>
+                        <div>
+                            <label for="report-name" class="block text-sm font-medium text-gray-700">Report Name</label>
+                            <input type="text" id="report-name" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="e.g., Weekly High-Confidence Picks">
+                        </div>
+                        <div>
+                            <label for="report-teams" class="block text-sm font-medium text-gray-700">Teams</label>
+                            <input type="text" id="report-teams" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="Search teams or leave blank for all...">
+                        </div>
+                        <div>
+                            <label for="report-league" class="block text-sm font-medium text-gray-700">League</label>
+                            <select id="report-league" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                <option value="">All Leagues</option>
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                         <div>
+                            <label for="report-confidence" class="block text-sm font-medium text-gray-700">Min. Confidence %</label>
+                            <input type="number" id="report-confidence" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="e.g., 60">
+                        </div>
+                    </div>
+                    <!-- Right Side: Fields -->
+                    <div class="space-y-4">
+                         <h4 class="text-lg font-semibold text-navy">2. Select Fields to Include</h4>
+                         <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-3 bg-gray-50 rounded-lg border">
+                            <!-- Field Checkboxes -->
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Date</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Home Team</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Away Team</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Odds (H/D/A)</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Prediction</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2" checked> Confidence %</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Pred. Outcome</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Pred. Prob. %</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Exp. Outcome</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Prob. Rate</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Match Result</label></div>
+                            <div><label class="flex items-center"><input type="checkbox" class="rounded text-emerald mr-2"> Total Goals</label></div>
+                         </div>
+                    </div>
+                </div>
+                 <!-- Bottom Section: Schedule -->
+                <div class="p-6 space-y-4 border-t">
+                    <h4 class="text-lg font-semibold text-navy">3. Schedule & Recipients</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="report-email-recipients" class="block text-sm font-medium text-gray-700">Recipients (comma-separated)</label>
+                            <input type="text" id="report-email-recipients" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald" placeholder="team@example.com">
+                        </div>
+                        <div>
+                            <label for="report-recurrence" class="block text-sm font-medium text-gray-700">Recurrence</label>
+                            <select id="report-recurrence" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                <option value="one-off">One-off (Send Now)</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="custom">Custom (Cron)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end space-x-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl">
+                    <button type="button" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Generate Preview</button>
+                    <button type="button" class="close-modal-btn px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium">Save & Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- JAVASCRIPT                                                          -->
+    <!-- =================================================================== -->
+    <script type="module">
+        // -------------------------------------------
+        // DOM Element Cache
+        // -------------------------------------------
+        const dom = {
+            navTabButtons: document.querySelectorAll('.nav-tab-button'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            notification: {
+                popup: document.getElementById('notification-popup'),
+                message: document.getElementById('notification-message'),
+            },
+            modals: {
+                addSender: document.getElementById('add-sender-modal'),
+                scheduleEmail: document.getElementById('schedule-email-modal'),
+                designReport: document.getElementById('design-report-modal'),
+            },
+            buttons: {
+                addEmail: document.getElementById('add-email-btn'),
+                scheduleEmail: document.getElementById('schedule-email-btn'),
+                designReport: document.getElementById('design-report-btn'),
+                closeModal: document.querySelectorAll('.close-modal-btn'),
+            },
+            forms: {
+                addSender: document.getElementById('add-sender-form'),
+                scheduleEmail: document.getElementById('schedule-email-form'),
+                designReport: document.getElementById('design-report-form'),
+            },
+            senderType: document.getElementById('sender-type'),
+            oauthSection: document.getElementById('oauth-section'),
+            smtpSection: document.getElementById('smtp-section'),
+            emailRecurrence: document.getElementById('email-recurrence'),
+            customRecurrence: document.getElementById('custom-recurrence-section'),
+        };
+
+        // -------------------------------------------
+        // UTILITY FUNCTIONS
+        // -------------------------------------------
+
+        function showNotification(message, type = 'info') {
+            const popup = dom.notification.popup;
+            dom.notification.message.textContent = message;
+            popup.classList.remove('bg-emerald', 'bg-red-500', 'bg-blue-500', 'hidden');
+            if (type === 'success') popup.classList.add('bg-emerald');
+            else if (type === 'error') popup.classList.add('bg-red-500');
+            else popup.classList.add('bg-blue-500');
+            popup.classList.remove('hidden');
+            setTimeout(() => popup.classList.add('hidden'), 3000);
+        }
+
+        // -------------------------------------------
+        // NAVIGATION
+        // -------------------------------------------
+        
+        function switchTab(tabName) {
+            dom.tabContents.forEach(content => content.classList.add('hidden'));
+            dom.navTabButtons.forEach(button => button.classList.remove('active'));
+
+            const activeContent = document.getElementById(`${tabName}-tab`);
+            const activeButton = document.querySelector(`.nav-tab-button[data-tab="${tabName}"]`);
+            
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeButton) activeButton.classList.add('active');
+        }
+
+        dom.navTabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                switchTab(button.dataset.tab);
+            });
+        });
+
+        // -------------------------------------------
+        // MODAL & FORM LOGIC
+        // -------------------------------------------
+
+        // Open Modals
+        dom.buttons.addEmail.addEventListener('click', () => dom.modals.addSender.classList.remove('hidden'));
+        dom.buttons.scheduleEmail.addEventListener('click', () => dom.modals.scheduleEmail.classList.remove('hidden'));
+        dom.buttons.designReport.addEventListener('click', () => dom.modals.designReport.classList.remove('hidden'));
+
+        // Close Modals
+        dom.buttons.closeModal.forEach(button => {
+            button.addEventListener('click', () => {
+                button.closest('.fixed').classList.add('hidden');
+            });
+        });
+
+        // Toggle Sender Auth Type
+        dom.senderType.addEventListener('change', (e) => {
+            if (e.target.value === 'smtp') {
+                dom.oauthSection.classList.add('hidden');
+                dom.smtpSection.classList.remove('hidden');
+            } else {
+                dom.oauthSection.classList.remove('hidden');
+                dom.smtpSection.classList.add('hidden');
+                // Logic to show correct OAuth button
+                if (e.target.value === 'gmail') {
+                    dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-google mr-2"></i>Connect with Google';
+                } else {
+                    dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-microsoft mr-2"></i>Connect with Outlook';
+                }
+            }
+        });
+        
+        // Toggle Custom Recurrence
+        dom.emailRecurrence.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                dom.customRecurrence.classList.remove('hidden');
+            } else {
+                dom.customRecurrence.classList.add('hidden');
+            }
+        });
+
+        // -------------------------------------------
+        // FORM SUBMISSIONS (MOCKED)
+        // -------------------------------------------
+        
+        // Add Sender Form
+        dom.forms.addSender.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('sender-email').value;
+            // TODO: Server-side call required
+            // 1. Send credentials/OAuth request to backend.
+            // 2. Backend validates, encrypts, and stores.
+            // 3. Backend returns status.
+            console.log('TODO: Submit sender details to backend for validation and secure storage.', {
+                email: email,
+                type: dom.senderType.value,
+            });
+            dom.modals.addSender.classList.add('hidden');
+            showNotification(`Sender ${email} added (mock). Connection test pending...`, 'success');
+            // In a real app, you'd refresh the senders table here after a successful API call
+        });
+
+        // Schedule Email Form
+        dom.forms.scheduleEmail.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const subject = document.getElementById('email-subject').value;
+            // TODO: Server-side call required
+            // 1. Send all form data (including file attachments) to backend.
+            // 2. Backend validates and adds the job to a scheduling engine (e.g., BullMQ, cron).
+            // 3. Backend returns job ID and status.
+            console.log('TODO: Submit email schedule request to backend.', {
+                subject: subject,
+                recipients: document.getElementById('email-recipients').value,
+                recurrence: dom.emailRecurrence.value,
+            });
+            dom.modals.scheduleEmail.classList.add('hidden');
+            showNotification(`Email "${subject}" scheduled (mock).`, 'success');
+            // In a real app, you'd refresh the scheduled jobs table here
+        });
+
+        // Design Report Form
+        dom.forms.designReport.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const reportName = document.getElementById('report-name').value;
+            // TODO: Server-side call required
+            // 1. Send report definition (filters, fields) and schedule to backend.
+            // 2. Backend saves the report definition and adds it to the scheduler.
+            // 3. PDF generation would be triggered by the scheduler, calling a server-side function
+            //    that uses Puppeteer or wkhtmltopdf.
+            console.log('TODO: Submit report design and schedule to backend.', {
+                reportName: reportName,
+                recurrence: document.getElementById('report-recurrence').value,
+            });
+            dom.modals.designReport.classList.add('hidden');
+            showNotification(`Report "${reportName}" scheduled (mock).`, 'success');
+            // In a real app, you'd refresh the scheduled reports table here
+        });
+
+
+        // -------------------------------------------
+        // INITIALIZATION
+        // -------------------------------------------
+        
+        // Set default tab on page load
+        switchTab('email-management');
+        
+        // Trigger change event to set initial auth UI
+        dom.senderType.dispatchEvent(new Event('change'));
+        
+    </script>
+</body>
+</html>
