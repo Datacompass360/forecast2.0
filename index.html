@@ -331,6 +331,22 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     <span>✅ Finished Matches</span>
                 </button>
+
+                <!-- === NEW TABS ADDED HERE === -->
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="hot-picks">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343m11.314 11.314a8 8 0 01-11.314-11.314m11.314 11.314L22 22M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-4.364l-.707.707M6.343 17.657l-.707.707m12.02-12.02l-.707-.707M6.343 6.343l-.707-.707" />
+                    </svg>
+                    <span>🔥 Hot Picks</span>
+                </button>
+                <a href="email.html" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>📧 Email Integration</span>
+                </a>
+                <!-- === END NEW TABS === -->
+
                 <button id="admin-nav-button" class="hidden nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="admin">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                     <span>👑 Admin</span>
@@ -914,6 +930,20 @@
                             <button id="admin-create-user-btn" class="px-4 py-2 bg-emerald text-white rounded-lg">Create User</button>
                             <span id="admin-create-user-msg" class="text-sm ml-3"></span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 
+                  =======================
+                  TAB: Hot Picks (NEW)
+                  ======================= 
+                -->
+                <div id="hot-picks-tab" class="tab-content hidden">
+                    <h1 class="text-3xl font-bold text-navy mb-6">🔥 Hot Picks</h1>
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <p class="text-gray-700 text-lg">This is the content area for Hot Picks.</p>
+                        <p class="text-gray-600 mt-2">This tab will display specially selected high-priority matches or tips, separate from the main filters.</p>
+                        <!-- Content for Hot Picks will go here -->
                     </div>
                 </div>
 
@@ -2071,6 +2101,11 @@
                 renderAllMatchesTable(); // Re-use the main table
                 updateSummaryCards('all-matches', filteredMatches); // Re-use main cards
                 dom.pagination.container.classList.remove('hidden');
+
+            // NEW: Handle hot-picks tab
+            } else if (activeTab === 'hot-picks') {
+                // Currently no filtering, just shows the content
+                // You could add filtering logic here later if needed
                 
             } else if (activeTab === 'selections') {
                 renderSelectionsTable(); // Handles its own logic
