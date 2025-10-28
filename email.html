@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Integration - DataCompass 360</title>
+    <title>DataCompass 360 - App</title>
     
     <!-- Favicon Placeholder -->
     <link rel="icon" href="https://icon.horse/icon/compass.com" type="image/png">
@@ -18,8 +18,11 @@
 
     <!-- 3. Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- 4. Papaparse (for CSV parsing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" xintegrity="sha512-dfHqHJzVobijUe9PaS9paL8hL8LqIe/K6b/2EDuJcYNK3s/9hG0/s/1/2QotSVvL/hmd1S2M91V/fFhB7M0j7w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <!-- 4. Custom Tailwind Configuration & Styles -->
+    <!-- 5. Custom Tailwind Configuration & Styles -->
     <script>
         tailwind.config = {
             theme: {
@@ -57,6 +60,52 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #00A86B; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #007a4e; }
+        
+        /* Simple CSS Loader */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #00A86B;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Ensure table layout is consistent */
+        table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
+        /* Set specific column widths for readability */
+        /* Table 1: Frequent Winners */
+        #frequent-winners-table th:nth-child(1) { width: 12%; } /* Confidence % */
+        #frequent-winners-table th:nth-child(2) { width: 15%; } /* Prediction */
+        #frequent-winners-table th:nth-child(3) { width: 15%; } /* Predicted Outcome */
+        #frequent-winners-table th:nth-child(4) { width: 12%; } /* Match Result */
+        #frequent-winners-table th:nth-child(5) { width: 15%; } /* Predicted Prob (%) */
+        #frequent-winners-table th:nth-child(6) { width: 15%; } /* Expected Outcome */
+        #frequent-winners-table th:nth-child(7) { width: 16%; } /* Probability */
+
+        /* Table 2: Over 2.5 */
+        #over-2-5-table th:nth-child(1) { width: 8%; } /* H Avg S */
+        #over-2-5-table th:nth-child(2) { width: 8%; } /* H Avg C */
+        #over-2-5-table th:nth-child(3) { width: 8%; } /* A Avg S */
+        #over-2-5-table th:nth-child(4) { width: 8%; } /* A Avg C */
+        #over-2-5-table th:nth-child(5) { width: 8%; } /* Conf % */
+        #over-2-5-table th:nth-child(6) { width: 10%; } /* Prediction */
+        #over-2-5-table th:nth-child(7) { width: 8%; } /* Pred Out */
+        #over-2-5-table th:nth-child(8) { width: 8%; } /* Pred Prob */
+        #over-2-5-table th:nth-child(9) { width: 8%; } /* Result */
+        #over-2-5-table th:nth-child(10) { width: 8%; } /* Exp Out */
+        #over-2-5-table th:nth-child(11) { width: 8%; } /* Prob */
+        #over-2-5-table th:nth-child(12) { width: 8%; } /* Total Goals */
+
     </style>
 </head>
 <body class="bg-gray-100">
@@ -83,7 +132,7 @@
                         <polygon points="12 4 14 8 12 10 10 8" class="text-gold" fill="currentColor"></polygon>
                     </svg>
                 </div>
-                <h1 class="text-2xl font-bold">DataCompass 360 - Email Integration</h1>
+                <h1 class="text-2xl font-bold">DataCompass 360</h1>
             </div>
             
             <!-- User Menu (Placeholder) -->
@@ -92,11 +141,7 @@
                     <div class="text-sm text-gray-300">Welcome,</div>
                     <div id="user-email" class="font-medium">Admin User</div>
                 </div>
-                <a href="index.html" title="Back to Dashboard" class="bg-emerald text-white rounded-full p-2.5 hover:bg-opacity-90 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                </a>
+                <div class="w-10 h-10 rounded-full bg-emerald flex items-center justify-center font-bold">A</div>
             </div>
         </header>
 
@@ -104,15 +149,21 @@
         <div class="flex flex-1 overflow-hidden">
             <!-- Navigation Sidebar -->
             <nav class="w-64 bg-navy text-gray-300 flex-shrink-0 p-4 space-y-2 overflow-y-auto">
-                <a href="index.html" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200">
+                <a href="index.html" class="nav-link w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6-4h.01M12 16h.01" />
                     </svg>
                     <span>🏆 Dashboard</span>
                 </a>
+                
+                <!-- Merged Tab Navigation -->
+                <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="hot-picks">
+                    <i class="fas fa-fire-alt h-5 w-5 text-center"></i>
+                    <span class="ml-0.5">🔥 Hot Picks</span>
+                </button>
                 <button class="nav-tab-button w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition duration-200" data-tab="email-management">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2" />
                     </svg>
                     <span>Sender Management</span>
                 </button>
@@ -135,10 +186,148 @@
                 
                 <!-- 
                   =======================
-                  TAB: Email Management
+                  TAB: Hot Picks (Merged)
                   ======================= 
                 -->
-                <div id="email-management-tab" class="tab-content">
+                <div id="hot-picks-tab" class="tab-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h1 class="text-3xl font-bold text-navy">🔥 Hot Picks</h1>
+                         <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium text-gray-700">Legend:</span>
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Total Goals ≥ 3
+                            </span>
+                        </div>
+                    </div>
+                   
+                    <!-- Table 1: Frequent Winners -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-xl font-semibold text-navy">Teams: Frequent Winners ( >3 Apps, ≥3 Wins)</h2>
+                            <p class="text-sm text-gray-600">Shows all matches for teams that meet the criteria.</p>
+                        </div>
+                        
+                        <!-- Filters for Table 1 -->
+                        <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50">
+                            <div>
+                                <label for="date-filter-1" class="block text-sm font-medium text-gray-700">Filter by Date</label>
+                                <select id="date-filter-1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <option value="">All Dates</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label for="league-filter-1" class="block text-sm font-medium text-gray-700">Filter by League</label>
+                                <select id="league-filter-1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <option value="">All Leagues</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Table 1 Wrapper -->
+                        <div id="table-1-loader" class="loader"></div>
+                        <div id="table-1-wrapper" class="overflow-x-auto hidden">
+                            <table id="frequent-winners-table" class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence %</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Outcome</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match Result</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Prob (%)</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Outcome</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Probability</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="frequent-winners-tbody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination for Table 1 -->
+                        <div id="pagination-1" class="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+                            <button id="prev-btn-1" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-arrow-left mr-2"></i>Previous
+                            </button>
+                            <span id="page-info-1" class="text-sm text-gray-700">Page 1 of 1</span>
+                            <button id="next-btn-1" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                Next<i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table 2: Over 2.5 Prediction -->
+                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-xl font-semibold text-navy">Over 2.5 Prediction (H/A Scored ≥1.8, H/A Conceded ≥1.5)</h2>
+                            <p class="text-sm text-gray-600">Shows matches where both teams have high offensive and defensive stats.</p>
+                        </div>
+                        
+                        <!-- Filters for Table 2 -->
+                        <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50">
+                            <div>
+                                <label for="date-filter-2" class="block text-sm font-medium text-gray-700">Filter by Date</label>
+                                <select id="date-filter-2" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <option value="">All Dates</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label for="league-filter-2" class="block text-sm font-medium text-gray-700">Filter by League</label>
+                                <select id="league-filter-2" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald focus:ring-emerald">
+                                    <option value="">All Leagues</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Table 2 Wrapper -->
+                        <div id="table-2-loader" class="loader"></div>
+                        <div id="table-2-wrapper" class="overflow-x-auto hidden">
+                            <table id="over-2-5-table" class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Avg S</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">H Avg C</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Avg S</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">A Avg C</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conf %</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prediction</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred Out</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pred Prob %</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exp Out</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prob</th>
+                                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Goals</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="over-2-5-tbody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination for Table 2 -->
+                        <div id="pagination-2" class="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+                            <button id="prev-btn-2" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-arrow-left mr-2"></i>Previous
+                            </button>
+                            <span id="page-info-2" class="text-sm text-gray-700">Page 1 of 1</span>
+                            <button id="next-btn-2" class="px-4 py-2 bg-emerald text-white rounded-lg hover:bg-opacity-90 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                Next<i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 
+                  =======================
+                  TAB: Email Management (Merged)
+                  ======================= 
+                -->
+                <div id="email-management-tab" class="tab-content hidden">
                     <div class="flex justify-between items-center mb-6">
                         <h1 class="text-3xl font-bold text-navy">Sender Email Management</h1>
                         <button id="add-email-btn" class="px-5 py-2 bg-emerald text-white rounded-lg font-semibold shadow-md hover:bg-opacity-90 transition">
@@ -175,34 +364,6 @@
                                             <button class="text-red-600 hover:text-red-800">Delete</button>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                                Auth Required
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">admin@datacompass360.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Admin</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Outlook (OAuth)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Re-authenticate</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                Broken
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">alerts@old-server.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Old Alerts</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">SMTP</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Edit</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
-                                    </tr>
                                     <!-- More rows would be added by JS -->
                                 </tbody>
                             </table>
@@ -212,7 +373,7 @@
 
                 <!-- 
                   =======================
-                  TAB: Email Scheduling
+                  TAB: Email Scheduling (Merged)
                   ======================= 
                 -->
                 <div id="email-scheduling-tab" class="tab-content hidden">
@@ -254,36 +415,6 @@
                                             <button class="text-red-600 hover:text-red-800">Delete</button>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Sent
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">High-Chance Picks</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">vip-list@example.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">One-off</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-27 10:00</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">View Log</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                Failed
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Daily Summary</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">admin@example.com</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Daily (8am)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-28 08:00</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-blue-600 hover:text-blue-800">Retry</button>
-                                            <button class="text-emerald hover:text-navy">View Error</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -292,7 +423,7 @@
 
                 <!-- 
                   =======================
-                  TAB: Report Designer
+                  TAB: Report Designer (Merged)
                   ======================= 
                 -->
                 <div id="report-designer-tab" class="tab-content hidden">
@@ -332,20 +463,6 @@
                                             <button class="text-red-600 hover:text-red-800">Delete</button>
                                         </td>
                                     </tr>
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Daily High-Confidence Picks</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Daily (10am)</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2025-10-29 10:00</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                Pending
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                                            <button class="text-emerald hover:text-navy">Edit</button>
-                                            <button class="text-red-600 hover:text-red-800">Delete</button>
-                                        </td>
-                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -358,7 +475,7 @@
 
 
     <!-- =================================================================== -->
-    <!-- MODALS                                                              -->
+    <!-- MODALS (Merged from email.html)                                     -->
     <!-- =================================================================== -->
 
     <!-- Add/Edit Sender Modal -->
@@ -585,11 +702,44 @@
 
 
     <!-- =================================================================== -->
-    <!-- JAVASCRIPT                                                          -->
+    <!-- JAVASCRIPT (MERGED)                                                 -->
     <!-- =================================================================== -->
     <script type="module">
         // -------------------------------------------
-        // DOM Element Cache
+        // CONFIG
+        // -------------------------------------------
+        
+        // --- !!! UPDATED URL !!! ---
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv';
+        
+        // Hot Picks Config
+        const ROWS_PER_PAGE = 10;
+        const FREQUENT_WINNER_MIN_APPEARANCES = 3;
+        const FREQUENT_WINNER_MIN_WINS = 3;
+        const OVER_2_5_HTEAM_SCORED = 1.8;
+        const OVER_2_5_ATEAM_SCORED = 1.8;
+        const OVER_2_5_HTEAM_CONCEDED = 1.5;
+        const OVER_2_5_ATEAM_CONCEDED = 1.5;
+
+
+        // -------------------------------------------
+        // STATE (Merged)
+        // -------------------------------------------
+        
+        // Hot Picks State
+        let allData = [];
+        let uniqueDates = new Set();
+        let uniqueLeagues = new Set();
+        let frequentWinnerTeams = [];
+        
+        let table1FilteredData = [];
+        let table2FilteredData = [];
+        
+        let table1CurrentPage = 1;
+        let table2CurrentPage = 1;
+
+        // -------------------------------------------
+        // DOM Element Cache (Merged)
         // -------------------------------------------
         const dom = {
             navTabButtons: document.querySelectorAll('.nav-tab-button'),
@@ -598,31 +748,58 @@
                 popup: document.getElementById('notification-popup'),
                 message: document.getElementById('notification-message'),
             },
+            // Modals (from email)
             modals: {
                 addSender: document.getElementById('add-sender-modal'),
                 scheduleEmail: document.getElementById('schedule-email-modal'),
                 designReport: document.getElementById('design-report-modal'),
             },
+            // Buttons (from email)
             buttons: {
                 addEmail: document.getElementById('add-email-btn'),
                 scheduleEmail: document.getElementById('schedule-email-btn'),
                 designReport: document.getElementById('design-report-btn'),
                 closeModal: document.querySelectorAll('.close-modal-btn'),
             },
+            // Forms (from email)
             forms: {
                 addSender: document.getElementById('add-sender-form'),
                 scheduleEmail: document.getElementById('schedule-email-form'),
                 designReport: document.getElementById('design-report-form'),
             },
+            // Form Controls (from email)
             senderType: document.getElementById('sender-type'),
             oauthSection: document.getElementById('oauth-section'),
             smtpSection: document.getElementById('smtp-section'),
             emailRecurrence: document.getElementById('email-recurrence'),
             customRecurrence: document.getElementById('custom-recurrence-section'),
+            
+            // Table 1 (from hot-picks)
+            table1: {
+                loader: document.getElementById('table-1-loader'),
+                wrapper: document.getElementById('table-1-wrapper'),
+                dateFilter: document.getElementById('date-filter-1'),
+                leagueFilter: document.getElementById('league-filter-1'),
+                tbody: document.getElementById('frequent-winners-tbody'),
+                prevBtn: document.getElementById('prev-btn-1'),
+                nextBtn: document.getElementById('next-btn-1'),
+                pageInfo: document.getElementById('page-info-1'),
+            },
+            // Table 2 (from hot-picks)
+            table2: {
+                loader: document.getElementById('table-2-loader'),
+                wrapper: document.getElementById('table-2-wrapper'),
+                dateFilter: document.getElementById('date-filter-2'),
+                leagueFilter: document.getElementById('league-filter-2'),
+                tbody: document.getElementById('over-2-5-tbody'),
+                prevBtn: document.getElementById('prev-btn-2'),
+                nextBtn: document.getElementById('next-btn-2'),
+                pageInfo: document.getElementById('page-info-2'),
+            }
         };
 
         // -------------------------------------------
-        // UTILITY FUNCTIONS
+        // UTILITY FUNCTIONS (Merged)
         // -------------------------------------------
 
         function showNotification(message, type = 'info') {
@@ -636,8 +813,50 @@
             setTimeout(() => popup.classList.add('hidden'), 3000);
         }
 
+        /**
+         * Parses a match result string (e.g., "2-1") and determines the winner.
+         * @param {string} resultString - The match result.
+         * @returns {'home' | 'away' | 'draw' | null} - The winner.
+         */
+        function getWinnerFromScore(resultString) {
+            if (!resultString || typeof resultString !== 'string') return null;
+            const scores = resultString.split('-').map(s => parseInt(s.trim(), 10));
+            if (scores.length === 2 && !isNaN(scores[0]) && !isNaN(scores[1])) {
+                if (scores[0] > scores[1]) return 'home';
+                if (scores[1] > scores[0]) return 'away';
+                if (scores[0] === scores[1]) return 'draw';
+            }
+            return null;
+        }
+        
+        /**
+         * Parses a match result string (e.g., "2-1") and calculates total goals.
+         * @param {string} resultString - The match result.
+         * @returns {number | '—'} - The total goals or '—'.
+         */
+        function calculateTotalGoals(resultString) {
+            if (!resultString || typeof resultString !== 'string') return '—';
+            const scores = resultString.split('-').map(s => parseInt(s.trim(), 10));
+            if (scores.length === 2 && !isNaN(scores[0]) && !isNaN(scores[1])) {
+                return scores[0] + scores[1];
+            }
+            return '—';
+        }
+
+        /**
+         * Sanitizes and formats a value for display in a table.
+         * @param {string | number | undefined} value - The value from the data.
+         * @returns {string} - The formatted value.
+         */
+        function formatCell(value) {
+            if (value === undefined || value === null || value === '') {
+                return '—';
+            }
+            return String(value);
+        }
+        
         // -------------------------------------------
-        // NAVIGATION
+        // NAVIGATION (from email)
         // -------------------------------------------
         
         function switchTab(tabName) {
@@ -651,122 +870,385 @@
             if (activeButton) activeButton.classList.add('active');
         }
 
+        // -------------------------------------------
+        // DATA FETCHING & PROCESSING (from hot-picks)
+        // -------------------------------------------
+
+        /**
+         * Fetches and parses the CSV data from the Google Sheet.
+         */
+        async function fetchData() {
+            try {
+                if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL.includes('S-H-O-L-D-E-R')) {
+                    showNotification('Error: Google Sheet URL is not set. Please update the script.', 'error');
+                    dom.table1.loader.classList.add('hidden');
+                    dom.table2.loader.classList.add('hidden');
+                    return;
+                }
+                
+                Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        allData = results.data;
+                        processData();
+                        populateFilters();
+                        renderTable1();
+                        renderTable2();
+                        dom.table1.loader.classList.add('hidden');
+                        dom.table1.wrapper.classList.remove('hidden');
+                        dom.table2.loader.classList.add('hidden');
+                        dom.table2.wrapper.classList.remove('hidden');
+                        showNotification('Data loaded successfully!', 'success');
+                    },
+                    error: (err) => {
+                        showNotification(`Error fetching data: ${err.message}`, 'error');
+                        dom.table1.loader.classList.add('hidden');
+                        dom.table2.loader.classList.add('hidden');
+                    }
+                });
+            } catch (error) {
+                showNotification(`Error: ${error.message}`, 'error');
+                dom.table1.loader.classList.add('hidden');
+                dom.table2.loader.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Processes the raw data to find unique filters and frequent winners.
+         */
+        function processData() {
+            const teamStats = {};
+
+            allData.forEach(row => {
+                const homeTeam = row['Home Team'];
+                const awayTeam = row['Away Team'];
+                
+                // Populate filters
+                if (row['Date']) uniqueDates.add(row['Date']);
+                if (row['League']) uniqueLeagues.add(row['League']);
+
+                // Initialize team stats if not present
+                if (homeTeam) {
+                    if (!teamStats[homeTeam]) teamStats[homeTeam] = { appearances: 0, wins: 0 };
+                    teamStats[homeTeam].appearances++;
+                }
+                if (awayTeam) {
+                    if (!teamStats[awayTeam]) teamStats[awayTeam] = { appearances: 0, wins: 0 };
+                    teamStats[awayTeam].appearances++;
+                }
+
+                // Calculate wins
+                const winner = getWinnerFromScore(row['Match Result']);
+                if (winner === 'home' && homeTeam) {
+                    teamStats[homeTeam].wins++;
+                } else if (winner === 'away' && awayTeam) {
+                    teamStats[awayTeam].wins++;
+                }
+            });
+
+            // Determine the set of frequent winner teams
+            frequentWinnerTeams = Object.keys(teamStats).filter(team => 
+                teamStats[team].appearances > FREQUENT_WINNER_MIN_APPEARANCES && 
+                teamStats[team].wins >= FREQUENT_WINNER_MIN_WINS
+            );
+        }
+
+        /**
+         * Populates the filter dropdowns with unique, sorted values.
+         */
+        function populateFilters() {
+            // Sort dates (newest to oldest)
+            const sortedDates = [...uniqueDates].sort((a, b) => new Date(b) - new Date(a));
+            // Sort leagues (A-Z)
+            const sortedLeagues = [...uniqueLeagues].sort();
+
+            const dateOptions = sortedDates.map(date => `<option value="${date}">${date}</option>`).join('');
+            const leagueOptions = sortedLeagues.map(league => `<option value="${league}">${league}</option>`).join('');
+
+            dom.table1.dateFilter.innerHTML += dateOptions;
+            dom.table1.leagueFilter.innerHTML += leagueOptions;
+            dom.table2.dateFilter.innerHTML += dateOptions;
+            dom.table2.leagueFilter.innerHTML += leagueOptions;
+            
+            // Also populate report designer league dropdown
+            const reportLeagueFilter = document.getElementById('report-league');
+            if (reportLeagueFilter) {
+                reportLeagueFilter.innerHTML += leagueOptions;
+            }
+        }
+
+        // -------------------------------------------
+        // TABLE 1: FREQUENT WINNERS (from hot-picks)
+        // -------------------------------------------
+
+        function renderTable1() {
+            const dateFilter = dom.table1.dateFilter.value;
+            const leagueFilter = dom.table1.leagueFilter.value;
+
+            // 1. Apply Filters
+            table1FilteredData = allData.filter(row => {
+                const matchesTeam = frequentWinnerTeams.includes(row['Home Team']) || frequentWinnerTeams.includes(row['Away Team']);
+                const matchesDate = !dateFilter || row['Date'] === dateFilter;
+                const matchesLeague = !leagueFilter || row['League'] === leagueFilter;
+                return matchesTeam && matchesDate && matchesLeague;
+            });
+
+            // 2. Apply Pagination
+            const totalPages = Math.ceil(table1FilteredData.length / ROWS_PER_PAGE);
+            if (table1CurrentPage > totalPages) table1CurrentPage = 1;
+            if (table1CurrentPage < 1) table1CurrentPage = 1;
+            
+            const startIndex = (table1CurrentPage - 1) * ROWS_PER_PAGE;
+            const endIndex = startIndex + ROWS_PER_PAGE;
+            const paginatedData = table1FilteredData.slice(startIndex, endIndex);
+
+            // 3. Generate HTML
+            let html = '';
+            if (paginatedData.length === 0) {
+                html = '<tr><td colspan="7" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
+            } else {
+                paginatedData.forEach(row => {
+                    html += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Confidence %'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Prediction'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Outcome'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Match Result'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Probability (%)'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Expected Outcome'])}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Probability'])}</td>
+                        </tr>
+                    `;
+                });
+            }
+            dom.table1.tbody.innerHTML = html;
+
+            // 4. Update Pagination UI
+            dom.table1.pageInfo.textContent = `Page ${table1CurrentPage} of ${totalPages || 1}`;
+            dom.table1.prevBtn.disabled = table1CurrentPage === 1;
+            dom.table1.nextBtn.disabled = table1CurrentPage === totalPages || totalPages === 0;
+        }
+
+        // -------------------------------------------
+        // TABLE 2: OVER 2.5 PREDICTION (from hot-picks)
+        // -------------------------------------------
+
+        function renderTable2() {
+            const dateFilter = dom.table2.dateFilter.value;
+            const leagueFilter = dom.table2.leagueFilter.value;
+
+            // 1. Apply Filters
+            table2FilteredData = allData.filter(row => {
+                const hTeamScored = parseFloat(row['Hteam Avg Scored']);
+                const aTeamScored = parseFloat(row['Ateam Avg Scored']);
+                const hTeamConceded = parseFloat(row['Hteam Avg Conceded']);
+                const aTeamConceded = parseFloat(row['Ateam Avg Conceded']);
+
+                const matchesStats = hTeamScored >= OVER_2_5_HTEAM_SCORED &&
+                                     aTeamScored >= OVER_2_5_ATEAM_SCORED &&
+                                     hTeamConceded >= OVER_2_5_HTEAM_CONCEDED &&
+                                     aTeamConceded >= OVER_2_5_ATEAM_CONCEDED;
+                
+                const matchesDate = !dateFilter || row['Date'] === dateFilter;
+                const matchesLeague = !leagueFilter || row['League'] === leagueFilter;
+                
+                return matchesStats && matchesDate && matchesLeague;
+            });
+
+            // 2. Apply Pagination
+            const totalPages = Math.ceil(table2FilteredData.length / ROWS_PER_PAGE);
+            if (table2CurrentPage > totalPages) table2CurrentPage = 1;
+            if (table2CurrentPage < 1) table2CurrentPage = 1;
+
+            const startIndex = (table2CurrentPage - 1) * ROWS_PER_PAGE;
+            const endIndex = startIndex + ROWS_PER_PAGE;
+            const paginatedData = table2FilteredData.slice(startIndex, endIndex);
+
+            // 3. Generate HTML
+            let html = '';
+            if (paginatedData.length === 0) {
+                html = '<tr><td colspan="12" class="text-center py-4 text-gray-500">No matches found for the selected criteria.</td></tr>';
+            } else {
+                paginatedData.forEach(row => {
+                    const totalGoals = calculateTotalGoals(row['Match Result']);
+                    const rowClass = totalGoals >= 3 ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-gray-50';
+                    
+                    html += `
+                        <tr class="${rowClass}">
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Hteam Avg Scored'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Hteam Avg Conceded'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Ateam Avg Scored'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Ateam Avg Conceded'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Confidence %'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Prediction'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Outcome'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Predicted Probability (%)'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Match Result'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Expected Outcome'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">${formatCell(row['Probability'])}</td>
+                            <td class="px-2 py-3 whitespace-nowrap text-sm font-bold ${totalGoals >= 3 ? 'text-green-800' : 'text-gray-900'}">${totalGoals}</td>
+                        </tr>
+                    `;
+                });
+            }
+            dom.table2.tbody.innerHTML = html;
+
+            // 4. Update Pagination UI
+            dom.table2.pageInfo.textContent = `Page ${table2CurrentPage} of ${totalPages || 1}`;
+            dom.table2.prevBtn.disabled = table2CurrentPage === 1;
+            dom.table2.nextBtn.disabled = table2CurrentPage === totalPages || totalPages === 0;
+        }
+
+        
+        // -------------------------------------------
+        // EVENT LISTENERS (Merged)
+        // -------------------------------------------
+
+        // --- Tab Navigation ---
         dom.navTabButtons.forEach(button => {
             button.addEventListener('click', () => {
                 switchTab(button.dataset.tab);
             });
         });
 
-        // -------------------------------------------
-        // MODAL & FORM LOGIC
-        // -------------------------------------------
-
+        // --- Modal & Form Logic (from email) ---
         // Open Modals
-        dom.buttons.addEmail.addEventListener('click', () => dom.modals.addSender.classList.remove('hidden'));
-        dom.buttons.scheduleEmail.addEventListener('click', () => dom.modals.scheduleEmail.classList.remove('hidden'));
-        dom.buttons.designReport.addEventListener('click', () => dom.modals.designReport.classList.remove('hidden'));
-
+        if (dom.buttons.addEmail) {
+            dom.buttons.addEmail.addEventListener('click', () => dom.modals.addSender.classList.remove('hidden'));
+        }
+        if (dom.buttons.scheduleEmail) {
+            dom.buttons.scheduleEmail.addEventListener('click', () => dom.modals.scheduleEmail.classList.remove('hidden'));
+        }
+        if (dom.buttons.designReport) {
+            dom.buttons.designReport.addEventListener('click', () => dom.modals.designReport.classList.remove('hidden'));
+        }
         // Close Modals
         dom.buttons.closeModal.forEach(button => {
             button.addEventListener('click', () => {
                 button.closest('.fixed').classList.add('hidden');
             });
         });
-
         // Toggle Sender Auth Type
-        dom.senderType.addEventListener('change', (e) => {
-            if (e.target.value === 'smtp') {
-                dom.oauthSection.classList.add('hidden');
-                dom.smtpSection.classList.remove('hidden');
-            } else {
-                dom.oauthSection.classList.remove('hidden');
-                dom.smtpSection.classList.add('hidden');
-                // Logic to show correct OAuth button
-                if (e.target.value === 'gmail') {
-                    dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-google mr-2"></i>Connect with Google';
+        if (dom.senderType) {
+            dom.senderType.addEventListener('change', (e) => {
+                if (e.target.value === 'smtp') {
+                    dom.oauthSection.classList.add('hidden');
+                    dom.smtpSection.classList.remove('hidden');
                 } else {
-                    dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-microsoft mr-2"></i>Connect with Outlook';
+                    dom.oauthSection.classList.remove('hidden');
+                    dom.smtpSection.classList.add('hidden');
+                    if (e.target.value === 'gmail') {
+                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-google mr-2"></i>Connect with Google';
+                    } else {
+                        dom.oauthSection.querySelector('button').innerHTML = '<i class="fab fa-microsoft mr-2"></i>Connect with Outlook';
+                    }
                 }
-            }
-        });
-        
+            });
+        }
         // Toggle Custom Recurrence
-        dom.emailRecurrence.addEventListener('change', (e) => {
-            if (e.target.value === 'custom') {
-                dom.customRecurrence.classList.remove('hidden');
-            } else {
-                dom.customRecurrence.classList.add('hidden');
+        if (dom.emailRecurrence) {
+            dom.emailRecurrence.addEventListener('change', (e) => {
+                if (e.target.value === 'custom') {
+                    dom.customRecurrence.classList.remove('hidden');
+                } else {
+                    dom.customRecurrence.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- Form Submissions (Mocked, from email) ---
+        if(dom.forms.addSender) {
+            dom.forms.addSender.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('sender-email').value;
+                console.log('TODO: Submit sender details to backend.', { email: email, type: dom.senderType.value });
+                dom.modals.addSender.classList.add('hidden');
+                showNotification(`Sender ${email} added (mock).`, 'success');
+            });
+        }
+        if(dom.forms.scheduleEmail) {
+            dom.forms.scheduleEmail.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const subject = document.getElementById('email-subject').value;
+                console.log('TODO: Submit email schedule to backend.', { subject: subject });
+                dom.modals.scheduleEmail.classList.add('hidden');
+                showNotification(`Email "${subject}" scheduled (mock).`, 'success');
+            });
+        }
+        if(dom.forms.designReport) {
+            dom.forms.designReport.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const reportName = document.getElementById('report-name').value;
+                console.log('TODO: Submit report design to backend.', { reportName: reportName });
+                dom.modals.designReport.classList.add('hidden');
+                showNotification(`Report "${reportName}" scheduled (mock).`, 'success');
+            });
+        }
+
+        // --- Table 1 Listeners (from hot-picks) ---
+        dom.table1.dateFilter.addEventListener('change', () => {
+            table1CurrentPage = 1;
+            renderTable1();
+        });
+        dom.table1.leagueFilter.addEventListener('change', () => {
+            table1CurrentPage = 1;
+            renderTable1();
+        });
+        dom.table1.prevBtn.addEventListener('click', () => {
+            if (table1CurrentPage > 1) {
+                table1CurrentPage--;
+                renderTable1();
+            }
+        });
+        dom.table1.nextBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(table1FilteredData.length / ROWS_PER_PAGE);
+            if (table1CurrentPage < totalPages) {
+                table1CurrentPage++;
+                renderTable1();
             }
         });
 
-        // -------------------------------------------
-        // FORM SUBMISSIONS (MOCKED)
-        // -------------------------------------------
+        // --- Table 2 Listeners (from hot-picks) ---
+        dom.table2.dateFilter.addEventListener('change', () => {
+            table2CurrentPage = 1;
+            renderTable2();
+        });
+        dom.table2.leagueFilter.addEventListener('change', () => {
+            table2CurrentPage = 1;
+            renderTable2();
+        });
+        dom.table2.prevBtn.addEventListener('click', () => {
+            if (table2CurrentPage > 1) {
+                table2CurrentPage--;
+                renderTable2();
+            }
+        });
+        dom.table2.nextBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(table2FilteredData.length / ROWS_PER_PAGE);
+            if (table2CurrentPage < totalPages) {
+                table2CurrentPage++;
+                renderTable2();
+            }
+        });
         
-        // Add Sender Form
-        dom.forms.addSender.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('sender-email').value;
-            // TODO: Server-side call required
-            // 1. Send credentials/OAuth request to backend.
-            // 2. Backend validates, encrypts, and stores.
-            // 3. Backend returns status.
-            console.log('TODO: Submit sender details to backend for validation and secure storage.', {
-                email: email,
-                type: dom.senderType.value,
-            });
-            dom.modals.addSender.classList.add('hidden');
-            showNotification(`Sender ${email} added (mock). Connection test pending...`, 'success');
-            // In a real app, you'd refresh the senders table here after a successful API call
-        });
-
-        // Schedule Email Form
-        dom.forms.scheduleEmail.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const subject = document.getElementById('email-subject').value;
-            // TODO: Server-side call required
-            // 1. Send all form data (including file attachments) to backend.
-            // 2. Backend validates and adds the job to a scheduling engine (e.g., BullMQ, cron).
-            // 3. Backend returns job ID and status.
-            console.log('TODO: Submit email schedule request to backend.', {
-                subject: subject,
-                recipients: document.getElementById('email-recipients').value,
-                recurrence: dom.emailRecurrence.value,
-            });
-            dom.modals.scheduleEmail.classList.add('hidden');
-            showNotification(`Email "${subject}" scheduled (mock).`, 'success');
-            // In a real app, you'd refresh the scheduled jobs table here
-        });
-
-        // Design Report Form
-        dom.forms.designReport.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const reportName = document.getElementById('report-name').value;
-            // TODO: Server-side call required
-            // 1. Send report definition (filters, fields) and schedule to backend.
-            // 2. Backend saves the report definition and adds it to the scheduler.
-            // 3. PDF generation would be triggered by the scheduler, calling a server-side function
-            //    that uses Puppeteer or wkhtmltopdf.
-            console.log('TODO: Submit report design and schedule to backend.', {
-                reportName: reportName,
-                recurrence: document.getElementById('report-recurrence').value,
-            });
-            dom.modals.designReport.classList.add('hidden');
-            showNotification(`Report "${reportName}" scheduled (mock).`, 'success');
-            // In a real app, you'd refresh the scheduled reports table here
-        });
-
-
         // -------------------------------------------
-        // INITIALIZATION
+        // INITIALIZATION (Merged)
         // -------------------------------------------
         
         // Set default tab on page load
-        switchTab('email-management');
+        switchTab('hot-picks');
         
-        // Trigger change event to set initial auth UI
-        dom.senderType.dispatchEvent(new Event('change'));
+        // Trigger change event to set initial auth UI (for email tab)
+        if(dom.senderType) {
+            dom.senderType.dispatchEvent(new Event('change'));
+        }
+
+        // Load data for Hot Picks tables
+        fetchData();
         
     </script>
 </body>
 </html>
+
