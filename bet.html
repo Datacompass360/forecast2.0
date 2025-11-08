@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bet of the Day</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+  <div class="p-6">
+    <h1 class="text-3xl font-bold mb-4 text-center text-blue-700">Bet of the Day</h1>
+
+    <!-- Filters -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 bg-blue-100 p-4 rounded-xl shadow-md">
+      <div>
+        <label class="block font-semibold">Date</label>
+        <select id="filter-date" class="w-full border rounded p-1"></select>
+      </div>
+      <div>
+        <label class="block font-semibold">League</label>
+        <input id="filter-league" type="text" class="w-full border rounded p-1">
+      </div>
+      <div>
+        <label class="block font-semibold">Home Team Standing (Min)</label>
+        <input id="filter-home-min" type="number" class="w-full border rounded p-1">
+      </div>
+      <div>
+        <label class="block font-semibold">Home Team Standing (Max)</label>
+        <input id="filter-home-max" type="number" class="w-full border rounded p-1">
+      </div>
+      <div>
+        <label class="block font-semibold">Away Team Standing (Min)</label>
+        <input id="filter-away-min" type="number" class="w-full border rounded p-1">
+      </div>
+      <div>
+        <label class="block font-semibold">Away Team Standing (Max)</label>
+        <input id="filter-away-max" type="number" class="w-full border rounded p-1">
+      </div>
+    </div>
+
+    <!-- Cards Section -->
+    <div id="summary-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6"></div>
+
+    <!-- Tables Section -->
+    <div class="mt-8 space-y-8">
+      <div id="table-bankers" class="rounded-xl shadow-lg bg-blue-50 p-4"></div>
+      <div id="table-value" class="rounded-xl shadow-lg bg-blue-50 p-4"></div>
+      <div id="table-draw" class="rounded-xl shadow-lg bg-blue-50 p-4"></div>
+    </div>
+  </div>
+
+  <!-- Popup Modal -->
+  <div id="popup" class="fixed inset-0 hidden bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-2xl p-6 w-11/12 md:w-3/4 lg:w-1/2 overflow-y-auto max-h-[80vh]">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-blue-700">Match Details</h2>
+        <button onclick="closePopup()" class="text-red-500 font-bold text-lg">✖</button>
+      </div>
+      <div id="popup-content" class="grid grid-cols-2 gap-4"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- FIX: Wrap the URL in a CORS proxy ---
+    const originalSheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vScquyzSAz50TOcPDugGkMgCJOSpUoh4u0iT-eOfbQ3E0tiQOLTCj7kzEpjPBWZCv6rGcxEyqqrFktP/pub?gid=711373021&single=true&output=csv';
+    // We use a different proxy this time, as the other one might be down.
+    // Note: corsproxy.io prefers the URL to NOT be encoded.
+    const sheetURL = `https://corsproxy.io/?${originalSheetURL}`;
+
+    let allData = [];
+
+    async function loadData() {
+      try {
+        const response = await fetch(sheetURL);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+        }
+        const csv = await response.text();
+        const parsed = Papa.parse(csv, { header: true });
+        allData = parsed.data.filter(row => row.Date); // Filter out empty rows
+        
+        if (allData.length === 0) {
+            console.warn("No data found after parsing. Check the CSV content.");
+            return;
+        }
+
+        populateDates();
+        renderTables();
+        renderCards();
+      } catch (error) {
+        console.error("Error loading data:", error);
+        // You could show an error message to the user on the page
+        document.body.innerHTML = `<div class="p-4 text-red-700 bg-red-100 rounded">
+          <strong>Error:</strong> Could not load data.
+          <p>${error.message}</p>
+          <p class="mt-2">This often happens if the CORS proxy service (corsproxy.io) is down or blocking the request. Please try again later.</p>
+        </div>`;
+      }
+    }
+
+    function populateDates() {
+      const uniqueDates = [...new Set(allData.map(r => r.Date))].sort((a, b) => new Date(b) - new Date(a)); // Sort dates descending
+      const dateSelect = document.getElementById('filter-date');
+      dateSelect.innerHTML = '<option value="">All</option>' + uniqueDates.map(d => `<option value="${d}">${d}</option>`).join('');
+    }
+
+    function renderCards() {
+      const categories = ['Bets of the day - Bankers', 'Value Bets of the day', 'DRAW bet of the day'];
+      const container = document.getElementById('summary-cards');
+      container.innerHTML = '';
+
+      categories.forEach(cat => {
+        const catMatches = allData.filter(r => r.Category === cat);
+        const total = catMatches.length;
+        const won = catMatches.filter(r => matchWon(r)).length;
+        container.innerHTML += `
+          <div class='bg-green-50 border border-green-300 rounded-xl p-4 shadow-md'>
+            <h3 class='font-bold text-blue-800 text-lg mb-2'>${cat}</h3>
+            <p><b>Total Matches:</b> ${total}</p>
+            <p><b>Won:</b> ${won}</p>
+          </div>`;
+      });
+    }
+
+    function renderTables() {
+      renderTable('Bets of the day - Bankers', 'table-bankers');
+      renderTable('Value Bets of the day', 'table-value');
+      renderTable('DRAW bet of the day', 'table-draw');
+    }
+
+    function renderTable(category, containerId) {
+      const container = document.getElementById(containerId);
+      const matches = allData.filter(r => r.Category === category);
+      if (matches.length === 0) {
+        container.innerHTML = `<h2 class='text-2xl font-bold mb-4 text-blue-700'>${category}</h2><p>No matches found for this category.</p>`;
+        return;
+      }
+
+      container.innerHTML = `<h2 class='text-2xl font-bold mb-4 text-blue-700'>${category}</h2>`;
+
+      const table = document.createElement('table');
+      table.className = 'w-full border-collapse';
+
+      table.innerHTML = `
+        <thead class='bg-blue-600 text-white'>
+          <tr>
+            <th class='p-2 text-left'>Date</th>
+            <th class='p-2 text-left'>Home</th>
+            <th class='p-2 text-left'>Away</th>
+            <th class='p-2 text-left'>Prediction</th>
+            <th class='p-2 text-left'>Confidence</th>
+            <th class='p-2 text-left'>Score</th>
+            <th class='p-2 text-left'>Result</th>
+            <th class='p-2 text-left'>Rank Diff</th>
+            <th class='p-2 text-left'>H2H Diff</th>
+            <th class='p-2 text-center'>View</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${matches.slice(0,10).map(r => renderRow(r)).join('')}
+        </tbody>`;
+
+      container.appendChild(table);
+    }
+
+    function renderRow(r) {
+      const rankDiff = (parseInt(r['Home Team Table Standing']||0) - parseInt(r['Away Team Table Standing']||0));
+      const h2hDiff = (parseInt(r['H2H Home Team Wins']||0) - parseInt(r['H2H Away Team Wins']||0));
+      
+      let color = 'bg-gray-50'; // Default for pending matches
+      if (r['Match Result'] && r['Match Result'].includes('-')) {
+          color = matchWon(r) ? 'bg-green-100' : 'bg-red-100';
+      }
+
+      return `<tr class='${color} border-b hover:bg-gray-200'>
+        <td class='p-2'>${r.Date || ''}</td>
+        <td class='p-2 font-semibold'>${r['Home Team'] || ''}</td>
+        <td class='p-2'>${r['Away Team'] || ''}</td>
+        <td class='p-2 font-bold text-blue-800'>${r.Prediction || ''}</td>
+        <td class='p-2'>${r.Confidence || ''}</td>
+        <td class='p-2'>${r['Correct Score'] || ''}</td>
+        <td class='p-2'>${r['Match Result'] || ''}</td>
+        <td class='p-2'>${isNaN(rankDiff) ? 'N/A' : rankDiff}</td>
+        <td class='p-2'>${isNaN(h2hDiff) ? 'N/A' : h2hDiff}</td>
+        <td class='p-2 text-center'>
+          <button 
+            onclick='viewMatch(${JSON.stringify(r).replace(/'/g,"&#39;").replace(/"/g, "&quot;")})' 
+            class='bg-blue-600 text-white px-3 py-1 rounded shadow hover:bg-blue-700 transition-colors'>
+            View
+          </button>
+        </td>
+      </tr>`;
+    }
+
+    function matchWon(r) {
+      if (!r['Match Result'] || !r.Prediction) return false;
+      const score = r['Match Result'].split('-').map(Number);
+      if (score.length < 2 || isNaN(score[0]) || isNaN(score[1])) return false;
+      
+      const pred = r.Prediction.toLowerCase();
+      if ((pred.includes('home') || pred.includes('1')) && score[0] > score[1]) return true;
+      if ((pred.includes('away') || pred.includes('2')) && score[1] > score[0]) return true;
+      if ((pred.includes('draw') || pred.includes('x')) && score[0] === score[1]) return true;
+      
+      // Add more complex bet types if needed, e.g., Over/Under
+      
+      return false;
+    }
+
+    function viewMatch(row) {
+      const popup = document.getElementById('popup');
+      const content = document.getElementById('popup-content');
+      popup.classList.remove('hidden');
+      
+      // Define fields to display in the popup
+      const fields = [
+        'League', 'Date', 'Home Team', 'Away Team', 'Prediction', 'Confidence', 'Correct Score', 'Match Result',
+        'Home Form', 'Away Form', 
+        'Home Team Table Standing', 'Away Team Table Standing', 'L5 H-Team Overall W',
+        'L5 H-Team Home W', 'L5 A-Team Overall W', 'L5 A-Team Away W',
+        'HTeam % -OV1.5', 'HTeam % -OV2.5', 'HTeam % -OV3.5',
+        'ATeam % -OV1.5', 'ATeam % -OV2.5', 'ATeam % -OV3.5',
+        'Hteam Avg Scored', 'Hteam Avg Conceded', 'Ateam Avg Scored', 'Ateam Avg Conceded',
+        'HTeam Power - Over 2.5', 'HTeam Power - BTTS', 'Home Team Power',
+        'ATeam Power - Over 2.5', 'ATeam Power - BTTS', 'Away Team Power', 'Match URL'
+      ];
+
+      content.innerHTML = fields.map(f => {
+        let value = row[f] || 'N/A';
+        if (f === 'Match URL' && value !== 'N/A') {
+          value = `<a href="${value}" target="_blank" class="text-blue-600 hover:underline">View Match</a>`;
+        }
+        return `<div class="p-2 bg-gray-50 rounded"><b>${f}:</b> ${value}</div>`;
+      }).join('');
+    }
+
+    function closePopup() {
+      document.getElementById('popup').classList.add('hidden');
+    }
+
+    // Add event listeners for filters
+    document.getElementById('filter-date').addEventListener('change', filterAndRender);
+    document.getElementById('filter-league').addEventListener('input', filterAndRender);
+    document.getElementById('filter-home-min').addEventListener('input', filterAndRender);
+    document.getElementById('filter-home-max').addEventListener('input', filterAndRender);
+    document.getElementById('filter-away-min').addEventListener('input', filterAndRender);
+    document.getElementById('filter-away-max').addEventListener('input', filterAndRender);
+
+    function filterAndRender() {
+      const date = document.getElementById('filter-date').value;
+      const league = document.getElementById('filter-league').value.toLowerCase();
+      const homeMin = parseInt(document.getElementById('filter-home-min').value) || 0;
+      const homeMax = parseInt(document.getElementById('filter-home-max').value) || Infinity;
+      const awayMin = parseInt(document.getElementById('filter-away-min').value) || 0;
+      const awayMax = parseInt(document.getElementById('filter-away-max').value) || Infinity;
+
+      const filteredData = allData.filter(r => {
+        const homeStand = parseInt(r['Home Team Table Standing']);
+        const awayStand = parseInt(r['Away Team Table Standing']);
+
+        return (date === "" || r.Date === date) &&
+               (league === "" || (r.League && r.League.toLowerCase().includes(league))) &&
+               (!isNaN(homeStand) ? homeStand >= homeMin && homeStand <= homeMax : true) &&
+               (!isNaN(awayStand) ? awayStand >= awayMin && awayStand <= awayMax : true);
+      });
+      
+      // Store current filtered data in a temporary variable to re-render
+      const originalData = allData;
+      allData = filteredData;
+      renderTables(); // Re-render tables with filtered data
+      renderCards(); // Re-render cards with filtered data
+      allData = originalData; // Restore original data for next filter operation
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
