@@ -1,647 +1,703 @@
-import React, { useEffect, useMemo, useState } from "react";
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FTP.NET - Forecast Dashboard</title>
 
-// FTP.NET - Single-file React component
-// - Assumes Tailwind CSS is available in the host project
-// - Exposes a responsive UI with filters, cards, table, modal and FTP Selections tab
+  <!-- Tailwind CDN for quick styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-export default function FTPNet() {
-  const DATA_CSV_URL =
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv";
+  <style>
+    /* Small custom tweaks */
+    .card-shadow { box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
+    .rounded-2xl { border-radius: 1rem; }
+    .modal-backdrop { background: rgba(0,0,0,0.35); }
+    /* small highlight for prediction tag */
+    .pred-home { background: rgba(0,90,224,0.12); color: #003a8c; padding: 0.25rem 0.5rem; border-radius: .375rem; }
+    .pred-draw { background: rgba(253,230,138,0.12); color: #7a5200; padding: 0.25rem 0.5rem; border-radius: .375rem; }
+    .pred-away { background: rgba(220,53,69,0.08); color: #7a1720; padding: 0.25rem 0.5rem; border-radius: .375rem; }
+    .table-row-hover:hover { background-color: #f8fafc; }
+    .green-row { background: rgba(40,167,69,0.06); }
+    .red-row { background: rgba(220,53,69,0.06); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
 
-  const FTP_SAVE_CSV_URL =
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv";
+  <div class="max-w-7xl mx-auto p-4 md:p-8">
 
-  // Data & UI state
-  const [rawCsv, setRawCsv] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Filters
-  const [matchDate, setMatchDate] = useState("");
-  const [boxScore, setBoxScore] = useState("");
-  const [homeWinsMin, setHomeWinsMin] = useState(0);
-  const [homeWinsMax, setHomeWinsMax] = useState(999);
-  const [awayWinsMin, setAwayWinsMin] = useState(0);
-  const [awayWinsMax, setAwayWinsMax] = useState(999);
-  const [search, setSearch] = useState("");
-
-  // Pagination
-  const PAGE_SIZE = 30;
-  const [page, setPage] = useState(1);
-
-  // Modal & selections
-  const [viewRow, setViewRow] = useState(null);
-  const [selectionsTab, setSelectionsTab] = useState(false);
-  const [selectedRows, setSelectedRows] = useState(() => {
-    try {
-      const s = localStorage.getItem("ftp_selections");
-      return s ? JSON.parse(s) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    fetchCsv();
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("ftp_selections", JSON.stringify(selectedRows));
-  }, [selectedRows]);
-
-  async function fetchCsv() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(DATA_CSV_URL);
-      if (!res.ok) throw new Error("Failed to fetch CSV");
-      const text = await res.text();
-      setRawCsv(text);
-      const parsed = parseCsv(text);
-      setRows(parsed);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Minimal CSV parser (handles commas and quoted values)
-  function parseCsv(csvText) {
-    const lines = csvText.split(/\r?\n/).filter((l) => l.trim() !== "");
-    if (lines.length === 0) return [];
-    const headers = splitCsvLine(lines[0]);
-    const out = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = splitCsvLine(lines[i]);
-      if (cols.length === 0) continue;
-      const obj = {};
-      for (let j = 0; j < headers.length; j++) {
-        obj[headers[j].trim()] = cols[j] ? cols[j].trim() : "";
-      }
-      // Normalize some fields and attach derived fields
-      obj.__originalIndex = i - 1;
-      obj.PredictionLabel = parsePredictionFromBox(obj["Box Correct Score"] || "");
-      out.push(obj);
-    }
-    return out;
-  }
-
-  function splitCsvLine(line) {
-    const result = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        inQuotes = !inQuotes;
-        continue;
-      }
-      if (ch === "," && !inQuotes) {
-        result.push(cur);
-        cur = "";
-        continue;
-      }
-      cur += ch;
-    }
-    result.push(cur);
-    return result;
-  }
-
-  function parsePredictionFromBox(box) {
-    if (!box) return "";
-    // assume box like "2-1" or maybe contains whitespace
-    const m = box.match(/(\d+)\s*-\s*(\d+)/);
-    if (!m) return "";
-    const h = parseInt(m[1], 10);
-    const a = parseInt(m[2], 10);
-    if (h > a) return "Home";
-    if (h === a) return "Draw";
-    return "Away";
-  }
-
-  function parseResultToLabel(result) {
-    if (!result) return "";
-    const m = (result + "").match(/(\d+)\s*-\s*(\d+)/);
-    if (!m) return "";
-    const h = parseInt(m[1], 10);
-    const a = parseInt(m[2], 10);
-    if (h > a) return "Home";
-    if (h === a) return "Draw";
-    return "Away";
-  }
-
-  // Dynamic dropdown data
-  const matchDates = useMemo(() => {
-    const setDates = new Set(rows.map((r) => r["Match Date"]).filter(Boolean));
-    return [...setDates].sort();
-  }, [rows]);
-
-  const boxScores = useMemo(() => {
-    const setScores = new Set(rows.map((r) => r["Box Correct Score"]).filter(Boolean));
-    return [...setScores].sort();
-  }, [rows]);
-
-  // Helper to safely get numeric fields that may be named differently in sheet
-  function num(r, key) {
-    const v = r[key];
-    if (!v) return 0;
-    const n = parseFloat((v + "").replace(/[^\d.\-]/g, ""));
-    return isNaN(n) ? 0 : n;
-  }
-
-  // Build the filtered dataset
-  const filtered = useMemo(() => {
-    let data = rows.slice();
-    if (matchDate) data = data.filter((r) => r["Match Date"] === matchDate);
-    if (boxScore) data = data.filter((r) => (r["Box Correct Score"] || "").includes(boxScore));
-    // Home Wins (counted) -> we assume there's a column named 'Home Wins' or 'Home_Wins' or we try to compute
-    data = data.filter((r) => {
-      const hWins = num(r, "Home Wins") || num(r, "Home_Wins") || 0;
-      return hWins >= homeWinsMin && hWins <= homeWinsMax;
-    });
-    data = data.filter((r) => {
-      const aWins = num(r, "Away Wins") || num(r, "Away_Wins") || 0;
-      return aWins >= awayWinsMin && aWins <= awayWinsMax;
-    });
-    if (search) {
-      const s = search.toLowerCase();
-      data = data.filter((r) => (r["Home Team"] || "").toLowerCase().includes(s) || (r["Away Team"] || "").toLowerCase().includes(s));
-    }
-    return data;
-  }, [rows, matchDate, boxScore, homeWinsMin, homeWinsMax, awayWinsMin, awayWinsMax, search]);
-
-  // Cards
-  const totalMatches = filtered.length;
-  const matchesWon = useMemo(() => {
-    return filtered.filter((r) => {
-      const pred = r.PredictionLabel;
-      const actual = parseResultToLabel(r["Match Result"]);
-      return pred && actual && pred === actual;
-    }).length;
-  }, [filtered]);
-  const pctWon = totalMatches === 0 ? 0 : Math.round((matchesWon / totalMatches) * 1000) / 10;
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  useEffect(() => {
-    if (page > totalPages) setPage(1);
-  }, [totalPages]);
-
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  function toggleSelectRow(row) {
-    const exists = selectedRows.find((r) => r.__originalIndex === row.__originalIndex);
-    if (exists) {
-      setSelectedRows(selectedRows.filter((r) => r.__originalIndex !== row.__originalIndex));
-    } else {
-      setSelectedRows([...selectedRows, row]);
-    }
-  }
-
-  function clearSelections() {
-    setSelectedRows([]);
-  }
-
-  function downloadSelectionsCsv() {
-    if (selectedRows.length === 0) return;
-    // Create CSV from selectedRows using headers from first row
-    const headers = Object.keys(selectedRows[0]).filter((k) => !k.startsWith("__"));
-    const lines = [headers.join(",")];
-    for (const r of selectedRows) {
-      const row = headers.map((h) => {
-        const v = r[h] ? ("" + r[h]).replace(/"/g, '""') : "";
-        return `"${v}"`;
-      });
-      lines.push(row.join(","));
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ftp_selections.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function trySaveToGooglePublishUrl() {
-    // NOTE: Published CSV URLs are read-only and do not accept writes from the browser (CORS + no API endpoint).
-    // We'll attempt a POST (which will almost certainly fail). If it fails, inform the user and fallback to downloadable CSV.
-    try {
-      const payload = JSON.stringify({ rows: selectedRows });
-      const res = await fetch(FTP_SAVE_CSV_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-      });
-      if (!res.ok) throw new Error(`Save failed: ${res.status}`);
-      alert("Saved successfully (note: this is unlikely for published CSV URLs — verify in your sheet). If you need server-side saving, use an Apps Script or a writable endpoint.");
-    } catch (e) {
-      alert(
-        "Unable to save directly to the published Google Sheets CSV. This URL is read-only from the browser due to CORS and because published CSVs do not accept POST.\n\nFallback: We'll download the selections as a CSV to your computer. To integrate direct saving, create a Google Apps Script web app or a server endpoint that accepts POST requests and write to the sheet."
-      );
-      downloadSelectionsCsv();
-    }
-  }
-
-  // Small helpers for row styling
-  function rowOutcomeClass(r) {
-    const pred = r.PredictionLabel;
-    const actual = parseResultToLabel(r["Match Result"]);
-    if (!pred || !actual) return "";
-    return pred === actual ? "bg-green-50" : "bg-red-50";
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <a
-              href="https://datacompass360.github.io/forecast2.0/"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md shadow hover:shadow-lg bg-white"
-            >
-              <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M15 18l-6-6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Back
-            </a>
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-800">FTP.NET</h1>
-            <div className="text-sm text-gray-500">Fetches predictions from Google Sheets · Responsive dashboard</div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setSelectionsTab((s) => !s);
-              }}
-              className="px-3 py-2 rounded-md shadow bg-blue-50 hover:bg-blue-100"
-            >
-              {selectionsTab ? "View FTP.NET" : "View FTP Selections"}
-            </button>
-            <button
-              onClick={() => {
-                fetchCsv();
-              }}
-              className="px-3 py-2 rounded-md shadow bg-white hover:bg-gray-50"
-            >
-              Refresh
-            </button>
-          </div>
-        </header>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <div className="text-sm">Total Matches</div>
-            <div className="text-2xl font-bold">{totalMatches}</div>
-            <div className="text-xs opacity-80 mt-1">Matches loaded after filters</div>
-          </div>
-
-          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-green-500 to-green-600 text-white">
-            <div className="text-sm">Matches Won</div>
-            <div className="text-2xl font-bold">{matchesWon}</div>
-            <div className="text-xs opacity-80 mt-1">Predictions that matched Match Result</div>
-          </div>
-
-          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-blue-500 to-green-500 text-white">
-            <div className="text-sm">Percentage Won</div>
-            <div className="text-2xl font-bold">{pctWon}%</div>
-            <div className="text-xs opacity-80 mt-1">Based on current filters</div>
-          </div>
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <a href="https://datacompass360.github.io/forecast2.0/" class="inline-flex items-center gap-2 bg-white px-3 py-2 rounded shadow hover:shadow-lg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-blue-600">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Back
+        </a>
+        <div>
+          <h1 class="text-2xl md:text-3xl font-semibold">FTP.NET</h1>
+          <div class="text-sm text-gray-500">Fetches predictions from Google Sheets · Responsive dashboard</div>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-xl shadow mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600">Match Date</label>
-              <select
-                value={matchDate}
-                onChange={(e) => setMatchDate(e.target.value)}
-                className="mt-1 block w-full p-2 border rounded-md"
-              >
-                <option value="">All Dates</option>
-                {matchDates.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <div class="flex gap-2 items-center">
+        <button id="toggleSelectionsBtn" class="px-3 py-2 rounded bg-blue-50 hover:bg-blue-100">View FTP Selections</button>
+        <button id="refreshBtn" class="px-3 py-2 rounded bg-white shadow">Refresh</button>
+      </div>
+    </header>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600">Box Correct Score</label>
-              <select
-                value={boxScore}
-                onChange={(e) => setBoxScore(e.target.value)}
-                className="mt-1 block w-full p-2 border rounded-md"
-              >
-                <option value="">All</option>
-                {boxScores.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </div>
+    <!-- Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#005AE0 0%, #0077FF 100%); color:white;">
+        <div class="text-sm">Total Matches</div>
+        <div id="cardTotal" class="text-2xl font-bold">0</div>
+        <div class="text-xs opacity-90 mt-1">Matches loaded after filters</div>
+      </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600">Home Wins (min / max)</label>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="number"
-                  className="p-2 border rounded w-1/2"
-                  value={homeWinsMin}
-                  onChange={(e) => setHomeWinsMin(Number(e.target.value))}
-                />
-                <input
-                  type="number"
-                  className="p-2 border rounded w-1/2"
-                  value={homeWinsMax}
-                  onChange={(e) => setHomeWinsMax(Number(e.target.value))}
-                />
-              </div>
-            </div>
+      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#28A745 0%, #39D07A 100%); color:white;">
+        <div class="text-sm">Matches Won</div>
+        <div id="cardWon" class="text-2xl font-bold">0</div>
+        <div class="text-xs opacity-90 mt-1">Predictions that matched Match Result</div>
+      </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-600">Away Wins (min / max)</label>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="number"
-                  className="p-2 border rounded w-1/2"
-                  value={awayWinsMin}
-                  onChange={(e) => setAwayWinsMin(Number(e.target.value))}
-                />
-                <input
-                  type="number"
-                  className="p-2 border rounded w-1/2"
-                  value={awayWinsMax}
-                  onChange={(e) => setAwayWinsMax(Number(e.target.value))}
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-gray-600">Search Teams</label>
-              <input
-                placeholder="Search Home or Away team"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="mt-1 block w-full p-2 border rounded-md"
-              />
-            </div>
-
-            <div className="flex items-end gap-2">
-              <button
-                onClick={() => {
-                  setMatchDate("");
-                  setBoxScore("");
-                  setHomeWinsMin(0);
-                  setHomeWinsMax(999);
-                  setAwayWinsMin(0);
-                  setAwayWinsMax(999);
-                  setSearch("");
-                }}
-                className="px-3 py-2 rounded-md bg-white shadow"
-              >
-                Reset
-              </button>
-              <div className="text-sm text-gray-500 self-center">{filtered.length} results</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main content: either FTP.NET table or FTP Selections */}
-        {!selectionsTab ? (
-          <section>
-            <div className="overflow-x-auto bg-white rounded-xl shadow">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-blue-900 text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm">Match Date</th>
-                    <th className="px-4 py-3 text-left text-sm">Home Team</th>
-                    <th className="px-4 py-3 text-left text-sm">Away Team</th>
-                    <th className="px-4 py-3 text-left text-sm">Box Correct Score</th>
-                    <th className="px-4 py-3 text-left text-sm">Home Avg Goals Scored</th>
-                    <th className="px-4 py-3 text-left text-sm">Home Avg Goals Conceded</th>
-                    <th className="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Scored</th>
-                    <th className="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Conceded</th>
-                    <th className="px-4 py-3 text-left text-sm">Match Result</th>
-                    <th className="px-4 py-3 text-left text-sm">Prediction</th>
-                    <th className="px-4 py-3 text-left text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {loading && (
-                    <tr>
-                      <td colSpan={11} className="p-6 text-center text-gray-500">
-                        Loading...
-                      </td>
-                    </tr>
-                  )}
-
-                  {!loading && pageRows.length === 0 && (
-                    <tr>
-                      <td colSpan={11} className="p-6 text-center text-gray-500">
-                        No matches found
-                      </td>
-                    </tr>
-                  )}
-
-                  {pageRows.map((r, idx) => {
-                    const rowClass = rowOutcomeClass(r);
-                    const isSelected = selectedRows.some((s) => s.__originalIndex === r.__originalIndex);
-                    return (
-                      <tr key={r.__originalIndex} className={`${rowClass} hover:bg-gray-50`}>
-                        <td className="px-4 py-3 text-sm">{r["Match Date"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Home Team"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Away Team"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Box Correct Score"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Home Avg Goals Scored"] || r["Home_Avg_Goals_Scored"] || ""}</td>
-                        <td className="px-4 py-3 text-sm">{r["Home Avg Goals Conceded"] || r["Home_Avg_Goals_Conceded"] || ""}</td>
-                        <td className="px-4 py-3 text-sm">{r["Away Avg Time 1st Goal Scored"] || r["Away_Avg_Time_1st_Goal_Scored"] || ""}</td>
-                        <td className="px-4 py-3 text-sm">{r["Away Avg Time 1st Goal Conceded"] || r["Away_Avg_Time_1st_Goal_Conceded"] || ""}</td>
-                        <td className="px-4 py-3 text-sm">{r["Match Result"]}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`inline-block px-2 py-1 rounded ${r.PredictionLabel === "Home" ? "bg-blue-100" : r.PredictionLabel === "Draw" ? "bg-yellow-100" : "bg-red-100"}`}>
-                            {r.PredictionLabel}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm flex gap-2">
-                          <button
-                            onClick={() => setViewRow(r)}
-                            className="px-2 py-1 rounded bg-white shadow hover:bg-gray-50"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => toggleSelectRow(r)}
-                            className={`px-2 py-1 rounded shadow ${isSelected ? "bg-green-100" : "bg-white"}`}
-                          >
-                            {isSelected ? "Selected" : "Select"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination controls */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Page {page} of {totalPages}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setPage(1)} disabled={page === 1} className="px-3 py-2 rounded bg-white shadow">
-                  First
-                </button>
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-2 rounded bg-white shadow">
-                  Prev
-                </button>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-2 rounded bg-white shadow">
-                  Next
-                </button>
-                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="px-3 py-2 rounded bg-white shadow">
-                  Last
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section>
-            <div className="bg-white rounded-xl shadow p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold">FTP Selections</h2>
-                <div className="flex gap-2">
-                  <button onClick={downloadSelectionsCsv} className="px-3 py-2 rounded bg-blue-600 text-white shadow">
-                    Download CSV
-                  </button>
-                  <button onClick={trySaveToGooglePublishUrl} className="px-3 py-2 rounded bg-green-600 text-white shadow">
-                    Save to Google (attempt)
-                  </button>
-                  <button onClick={clearSelections} className="px-3 py-2 rounded bg-red-500 text-white shadow">
-                    Clear
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-blue-900 text-white">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm">Match Date</th>
-                      <th className="px-4 py-3 text-left text-sm">Home Team</th>
-                      <th className="px-4 py-3 text-left text-sm">Away Team</th>
-                      <th className="px-4 py-3 text-left text-sm">Box Correct Score</th>
-                      <th className="px-4 py-3 text-left text-sm">Match Result</th>
-                      <th className="px-4 py-3 text-left text-sm">Prediction</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedRows.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="p-6 text-center text-gray-500">
-                          No selections yet
-                        </td>
-                      </tr>
-                    )}
-                    {selectedRows.map((r) => (
-                      <tr key={r.__originalIndex} className={`${rowOutcomeClass(r)} hover:bg-gray-50`}>
-                        <td className="px-4 py-3 text-sm">{r["Match Date"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Home Team"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Away Team"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Box Correct Score"]}</td>
-                        <td className="px-4 py-3 text-sm">{r["Match Result"]}</td>
-                        <td className="px-4 py-3 text-sm">{r.PredictionLabel}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Modal for viewing a row */}
-        {viewRow && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black opacity-25" onClick={() => setViewRow(null)} />
-            <div className="relative max-w-4xl w-full bg-white rounded-xl shadow-lg overflow-auto p-6">
-              <div className="flex items-start justify-between">
-                <h3 className="text-xl font-semibold">Match Detail</h3>
-                <div className="flex gap-2">
-                  {viewRow["Match Link"] ? (
-                    <a href={viewRow["Match Link"]} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded bg-blue-600 text-white">
-                      Match Link
-                    </a>
-                  ) : null}
-                  <button onClick={() => setViewRow(null)} className="px-3 py-2 rounded bg-gray-100">
-                    Close
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div className="p-4 border rounded">
-                  <h4 className="font-semibold">Home Stats</h4>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    <li><strong>Home Form:</strong> {viewRow["Home Form"] || viewRow["Home_Form"] || ""}</li>
-                    <li><strong>Home Wins:</strong> {viewRow["Home Wins"] || viewRow["Home_Wins"] || ""}</li>
-                    <li><strong>H2H Home Wins:</strong> {viewRow["H2H Home Wins"] || viewRow["H2H_Home_Wins"] || ""}</li>
-                    <li><strong>Home Table Pos:</strong> {viewRow["Home Table Pos"] || viewRow["Home_Table_Pos"] || ""}</li>
-                    <li><strong>Home Avg Goals Scored:</strong> {viewRow["Home Avg Goals Scored"] || viewRow["Home_Avg_Goals_Scored"] || ""}</li>
-                    <li><strong>Home Avg Goals Conceded:</strong> {viewRow["Home Avg Goals Conceded"] || viewRow["Home_Avg_Goals_Conceded"] || ""}</li>
-                    <li><strong>Home Avg Time 1st Goal Scored:</strong> {viewRow["Home Avg Time 1st Goal Scored"] || viewRow["Home_Avg_Time_1st_Goal_Scored"] || ""}</li>
-                    <li><strong>Home Avg Yellow Cards:</strong> {viewRow["Home Avg Yellow Cards"] || viewRow["Home_Avg_Yellow_Cards"] || ""}</li>
-                    <li><strong>Home Avg Red Cards:</strong> {viewRow["Home Avg Red Cards"] || viewRow["Home_Avg_Red_Cards"] || ""}</li>
-                    <li><strong>Home Avg Subs Used:</strong> {viewRow["Home Avg Subs Used"] || viewRow["Home_Avg_Subs_Used"] || ""}</li>
-                    <li><strong>Home Biggest Victory:</strong> {viewRow["Home Biggest Victory"] || viewRow["Home_Biggest_Victory"] || ""}</li>
-                    <li><strong>Home Biggest Defeat:</strong> {viewRow["Home Biggest Defeat"] || viewRow["Home_Biggest_Defeat"] || ""}</li>
-                  </ul>
-                </div>
-
-                <div className="p-4 border rounded">
-                  <h4 className="font-semibold">Away Stats</h4>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    <li><strong>Away Form:</strong> {viewRow["Away Form"] || viewRow["Away_Form"] || ""}</li>
-                    <li><strong>Away Wins:</strong> {viewRow["Away Wins"] || viewRow["Away_Wins"] || ""}</li>
-                    <li><strong>H2H Away Wins:</strong> {viewRow["H2H Away Wins"] || viewRow["H2H_Away_Wins"] || ""}</li>
-                    <li><strong>H2H Draws:</strong> {viewRow["H2H Draws"] || viewRow["H2H_Draws"] || ""}</li>
-                    <li><strong>Away Table Pos:</strong> {viewRow["Away Table Pos"] || viewRow["Away_Table_Pos"] || ""}</li>
-                    <li><strong>Away Avg Goals Scored:</strong> {viewRow["Away Avg Goals Scored"] || viewRow["Away_Avg_Goals_Scored"] || ""}</li>
-                    <li><strong>Away Avg Goals Conceded:</strong> {viewRow["Away Avg Goals Conceded"] || viewRow["Away_Avg_Goals_Conceded"] || ""}</li>
-                    <li><strong>Away Avg Time 1st Goal Scored:</strong> {viewRow["Away Avg Time 1st Goal Scored"] || viewRow["Away_Avg_Time_1st_Goal_Scored"] || ""}</li>
-                    <li><strong>Away Avg Yellow Cards:</strong> {viewRow["Away Avg Yellow Cards"] || viewRow["Away_Avg_Yellow_Cards"] || ""}</li>
-                    <li><strong>Away Avg Red Cards:</strong> {viewRow["Away Avg Red Cards"] || viewRow["Away_Avg_Red_Cards"] || ""}</li>
-                    <li><strong>Away Avg Subs Used:</strong> {viewRow["Away Avg Subs Used"] || viewRow["Away_Avg_Subs_Used"] || ""}</li>
-                    <li><strong>Away Biggest Victory:</strong> {viewRow["Away Biggest Victory"] || viewRow["Away_Biggest_Victory"] || ""}</li>
-                    <li><strong>Away Biggest Defeat:</strong> {viewRow["Away Biggest Defeat"] || viewRow["Away_Biggest_Defeat"] || ""}</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <button
-                  onClick={() => {
-                    toggleSelectRow(viewRow);
-                    setViewRow(null);
-                  }}
-                  className="px-4 py-2 rounded bg-green-600 text-white shadow"
-                >
-                  Select this Match
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <footer className="mt-8 text-center text-sm text-gray-500">Built with ❤️ · FTP.NET</footer>
+      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#005AE0 0%, #28A745 100%); color:white;">
+        <div class="text-sm">Percentage Won</div>
+        <div id="cardPct" class="text-2xl font-bold">0%</div>
+        <div class="text-xs opacity-90 mt-1">Based on current filters</div>
       </div>
     </div>
-  );
-}
+
+    <!-- Filters -->
+    <div class="bg-white p-4 rounded-xl shadow mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Match Date</label>
+          <select id="filterDate" class="mt-1 block w-full p-2 border rounded-md">
+            <option value="">All Dates</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Box Correct Score</label>
+          <select id="filterBox" class="mt-1 block w-full p-2 border rounded-md">
+            <option value="">All</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Home Wins (min)</label>
+          <input id="homeWinsMin" type="number" value="0" class="mt-1 block w-full p-2 border rounded-md" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Home Wins (max)</label>
+          <input id="homeWinsMax" type="number" value="999" class="mt-1 block w-full p-2 border rounded-md" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Away Wins (min)</label>
+          <input id="awayWinsMin" type="number" value="0" class="mt-1 block w-full p-2 border rounded-md" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600">Away Wins (max)</label>
+          <input id="awayWinsMax" type="number" value="999" class="mt-1 block w-full p-2 border rounded-md" />
+        </div>
+
+        <div class="md:col-span-4">
+          <label class="block text-xs font-medium text-gray-600">Search Teams</label>
+          <input id="searchInput" placeholder="Search Home or Away team" class="mt-1 block w-full p-2 border rounded-md" />
+        </div>
+
+        <div class="flex items-end gap-2">
+          <button id="resetFilters" class="px-3 py-2 rounded bg-white shadow">Reset</button>
+          <div class="text-sm text-gray-500 self-center"> <span id="resultsCount">0</span> results</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content container -->
+    <div id="mainContainer">
+
+      <!-- Table view -->
+      <section id="tableSection">
+        <div class="overflow-x-auto bg-white rounded-xl shadow">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-blue-900 text-white">
+              <tr>
+                <th class="px-4 py-3 text-left text-sm">Match Date</th>
+                <th class="px-4 py-3 text-left text-sm">Home Team</th>
+                <th class="px-4 py-3 text-left text-sm">Away Team</th>
+                <th class="px-4 py-3 text-left text-sm">Box Correct Score</th>
+                <th class="px-4 py-3 text-left text-sm">Home Avg Goals Scored</th>
+                <th class="px-4 py-3 text-left text-sm">Home Avg Goals Conceded</th>
+                <th class="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Scored</th>
+                <th class="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Conceded</th>
+                <th class="px-4 py-3 text-left text-sm">Match Result</th>
+                <th class="px-4 py-3 text-left text-sm">Prediction</th>
+                <th class="px-4 py-3 text-left text-sm">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+              <tr><td colspan="11" class="p-6 text-center text-gray-500" id="loadingCell">Loading matches…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-gray-600">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></div>
+          <div class="flex gap-2">
+            <button id="firstPage" class="px-3 py-2 rounded bg-white shadow">First</button>
+            <button id="prevPage" class="px-3 py-2 rounded bg-white shadow">Prev</button>
+            <button id="nextPage" class="px-3 py-2 rounded bg-white shadow">Next</button>
+            <button id="lastPage" class="px-3 py-2 rounded bg-white shadow">Last</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FTP Selections section (hidden initially) -->
+      <section id="selectionsSection" class="hidden">
+        <div class="bg-white rounded-xl shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">FTP Selections</h2>
+            <div class="flex gap-2">
+              <button id="downloadSelections" class="px-3 py-2 rounded bg-blue-600 text-white shadow">Download CSV</button>
+              <button id="saveSelections" class="px-3 py-2 rounded bg-green-600 text-white shadow">Save to Google (attempt)</button>
+              <button id="clearSelections" class="px-3 py-2 rounded bg-red-500 text-white shadow">Clear</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-blue-900 text-white">
+                <tr>
+                  <th class="px-4 py-3 text-left text-sm">Match Date</th>
+                  <th class="px-4 py-3 text-left text-sm">Home Team</th>
+                  <th class="px-4 py-3 text-left text-sm">Away Team</th>
+                  <th class="px-4 py-3 text-left text-sm">Box Correct Score</th>
+                  <th class="px-4 py-3 text-left text-sm">Match Result</th>
+                  <th class="px-4 py-3 text-left text-sm">Prediction</th>
+                </tr>
+              </thead>
+              <tbody id="selectionsBody">
+                <tr><td colspan="6" class="p-6 text-center text-gray-500">No selections yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Modal -->
+    <div id="modalRoot" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div class="absolute inset-0 modal-backdrop" onclick="closeModal()"></div>
+      <div class="relative max-w-4xl w-full bg-white rounded-xl shadow-lg overflow-auto p-6">
+        <div class="flex items-start justify-between">
+          <h3 id="modalTitle" class="text-xl font-semibold">Match Detail</h3>
+          <div class="flex gap-2">
+            <a id="modalMatchLink" href="#" target="_blank" class="px-3 py-2 rounded bg-blue-600 text-white hidden">Match Link</a>
+            <button onclick="closeModal()" class="px-3 py-2 rounded bg-gray-100">Close</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="p-4 border rounded">
+            <h4 class="font-semibold">Home Stats</h4>
+            <ul id="modalHomeList" class="mt-2 space-y-1 text-sm"></ul>
+          </div>
+
+          <div class="p-4 border rounded">
+            <h4 class="font-semibold">Away Stats</h4>
+            <ul id="modalAwayList" class="mt-2 space-y-1 text-sm"></ul>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button id="modalSelectBtn" class="px-4 py-2 rounded bg-green-600 text-white shadow">Select this Match</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-8 text-center text-sm text-gray-500">Built with ❤️ · FTP.NET</footer>
+
+  </div>
+
+  <!-- Script -->
+  <script>
+    // Configuration (CSV sources)
+    const DATA_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv';
+    const FTP_SAVE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv';
+
+    // UI elements
+    const tableBody = document.getElementById('tableBody');
+    const loadingCell = document.getElementById('loadingCell');
+    const filterDate = document.getElementById('filterDate');
+    const filterBox = document.getElementById('filterBox');
+    const homeWinsMin = document.getElementById('homeWinsMin');
+    const homeWinsMax = document.getElementById('homeWinsMax');
+    const awayWinsMin = document.getElementById('awayWinsMin');
+    const awayWinsMax = document.getElementById('awayWinsMax');
+    const searchInput = document.getElementById('searchInput');
+    const resetFilters = document.getElementById('resetFilters');
+    const resultsCount = document.getElementById('resultsCount');
+
+    const cardTotal = document.getElementById('cardTotal');
+    const cardWon = document.getElementById('cardWon');
+    const cardPct = document.getElementById('cardPct');
+
+    const toggleSelectionsBtn = document.getElementById('toggleSelectionsBtn');
+    const tableSection = document.getElementById('tableSection');
+    const selectionsSection = document.getElementById('selectionsSection');
+
+    const selectionsBody = document.getElementById('selectionsBody');
+    const downloadSelections = document.getElementById('downloadSelections');
+    const saveSelections = document.getElementById('saveSelections');
+    const clearSelectionsBtn = document.getElementById('clearSelections');
+
+    const currentPageLabel = document.getElementById('currentPage');
+    const totalPagesLabel = document.getElementById('totalPages');
+    const firstPage = document.getElementById('firstPage');
+    const prevPage = document.getElementById('prevPage');
+    const nextPage = document.getElementById('nextPage');
+    const lastPage = document.getElementById('lastPage');
+
+    const modalRoot = document.getElementById('modalRoot');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalHomeList = document.getElementById('modalHomeList');
+    const modalAwayList = document.getElementById('modalAwayList');
+    const modalMatchLink = document.getElementById('modalMatchLink');
+    const modalSelectBtn = document.getElementById('modalSelectBtn');
+
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    // State
+    let rows = [];                 // all parsed rows
+    let filtered = [];             // filtered rows
+    let page = 1;
+    const PAGE_SIZE = 30;
+    let selectedRows = loadSelections(); // selections persisted to localStorage
+    let currentViewedRow = null;
+
+    // CSV helper
+    function parseCSV(text) {
+      // Simple CSV parser that handles quoted values
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lines.length === 0) return [];
+      const headers = splitCsvLine(lines[0]).map(h => h.trim());
+      const out = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = splitCsvLine(lines[i]);
+        if (cols.length === 0) continue;
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) {
+          obj[headers[j]] = (cols[j] || '').trim();
+        }
+        obj.__originalIndex = i - 1;
+        obj.PredictionLabel = parsePredictionFromBox(obj['Box Correct Score'] || '');
+        out.push(obj);
+      }
+      return out;
+    }
+    function splitCsvLine(line) {
+      const result = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (ch === ',' && !inQuotes) {
+          result.push(cur);
+          cur = '';
+          continue;
+        }
+        cur += ch;
+      }
+      result.push(cur);
+      return result;
+    }
+
+    function parsePredictionFromBox(box) {
+      if (!box) return '';
+      const m = box.match(/(\d+)\s*-\s*(\d+)/);
+      if (!m) return '';
+      const h = parseInt(m[1],10), a = parseInt(m[2],10);
+      if (h > a) return 'Home';
+      if (h === a) return 'Draw';
+      return 'Away';
+    }
+
+    function parseResultLabel(result) {
+      if (!result) return '';
+      const m = (''+result).match(/(\d+)\s*-\s*(\d+)/);
+      if (!m) return '';
+      const h = parseInt(m[1],10), a = parseInt(m[2],10);
+      if (h > a) return 'Home';
+      if (h === a) return 'Draw';
+      return 'Away';
+    }
+
+    // Numeric helper (robust)
+    function toNum(v) {
+      if (!v && v !== 0) return 0;
+      const n = parseFloat((''+v).replace(/[^0-9.-]/g,''));
+      return isNaN(n) ? 0 : n;
+    }
+
+    // Load CSV
+    async function fetchCsvAndRender() {
+      tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-gray-500">Loading matches…</td></tr>';
+      try {
+        const res = await fetch(DATA_CSV_URL);
+        if (!res.ok) throw new Error('Failed to fetch CSV');
+        const text = await res.text();
+        rows = parseCSV(text);
+        applyFiltersAndRender();
+        populateDropdowns();
+      } catch (err) {
+        tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-red-500">Error loading CSV: '+ err.message +'</td></tr>';
+        console.error(err);
+      }
+    }
+
+    // Build dynamic dropdowns
+    function populateDropdowns() {
+      const dates = Array.from(new Set(rows.map(r => r['Match Date']).filter(Boolean))).sort();
+      const boxes = Array.from(new Set(rows.map(r => r['Box Correct Score']).filter(Boolean))).sort();
+      filterDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+      filterBox.innerHTML = '<option value="">All</option>' + boxes.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+    }
+
+    // Escape helper for safety in HTML insertion
+    function escapeHtml(s) {
+      return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Filtering logic
+    function applyFiltersAndRender() {
+      const dateVal = filterDate.value;
+      const boxVal = filterBox.value;
+      const hMin = Number(homeWinsMin.value) || 0;
+      const hMax = Number(homeWinsMax.value) || 9999;
+      const aMin = Number(awayWinsMin.value) || 0;
+      const aMax = Number(awayWinsMax.value) || 9999;
+      const s = (searchInput.value || '').toLowerCase();
+
+      filtered = rows.filter(r => {
+        if (dateVal && r['Match Date'] !== dateVal) return false;
+        if (boxVal && !((r['Box Correct Score']||'').includes(boxVal))) return false;
+        // home wins may be in various column names: 'Home Wins', 'Home_Wins' (try both)
+        const hWins = toNum(r['Home Wins'] || r['Home_Wins'] || r['HomeWins'] || 0);
+        const aWins = toNum(r['Away Wins'] || r['Away_Wins'] || r['AwayWins'] || 0);
+        if (hWins < hMin || hWins > hMax) return false;
+        if (aWins < aMin || aWins > aMax) return false;
+        if (s) {
+          const home = (r['Home Team']||'').toLowerCase();
+          const away = (r['Away Team']||'').toLowerCase();
+          if (!home.includes(s) && !away.includes(s)) return false;
+        }
+        return true;
+      });
+
+      // reset to first page if page out of range
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (page > totalPages) page = 1;
+
+      renderTable();
+      renderCards();
+      resultsCount.textContent = filtered.length;
+    }
+
+    // Render cards
+    function renderCards() {
+      const total = filtered.length;
+      const won = filtered.filter(r => {
+        const pred = r.PredictionLabel;
+        const actual = parseResultLabel(r['Match Result']);
+        return pred && actual && pred === actual;
+      }).length;
+      const pct = total === 0 ? 0 : Math.round((won/total)*1000)/10;
+      cardTotal.textContent = total;
+      cardWon.textContent = won;
+      cardPct.textContent = pct + '%';
+    }
+
+    // Render table page
+    function renderTable() {
+      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      totalPagesLabel.textContent = totalPages;
+      currentPageLabel.textContent = page;
+
+      const start = (page-1) * PAGE_SIZE;
+      const pageRows = filtered.slice(start, start + PAGE_SIZE);
+
+      if (pageRows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-gray-500">No matches found</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = pageRows.map(r => {
+        const pred = r.PredictionLabel || '';
+        const actualLabel = parseResultLabel(r['Match Result'] || '');
+        const rowClass = (pred && actualLabel && pred === actualLabel) ? 'green-row' : (pred && actualLabel && pred !== actualLabel) ? 'red-row' : '';
+        const predTag = pred === 'Home' ? `<span class="pred-home">${pred}</span>` : pred === 'Draw' ? `<span class="pred-draw">${pred}</span>` : pred === 'Away' ? `<span class="pred-away">${pred}</span>` : '';
+        const isSelected = selectedRows.some(s => s.__originalIndex === r.__originalIndex);
+        return `
+          <tr class="table-row-hover ${rowClass}">
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Date']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Team']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Team']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Box Correct Score']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Avg Goals Scored']||r['Home_Avg_Goals_Scored']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Avg Goals Conceded']||r['Home_Avg_Goals_Conceded']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Avg Time 1st Goal Scored']||r['Away_Avg_Time_1st_Goal_Scored']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Avg Time 1st Goal Conceded']||r['Away_Avg_Time_1st_Goal_Conceded']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Result']||'')}</td>
+            <td class="px-4 py-3 text-sm">${predTag}</td>
+            <td class="px-4 py-3 text-sm flex gap-2">
+              <button data-index="${r.__originalIndex}" class="viewBtn px-2 py-1 rounded bg-white shadow">View</button>
+              <button data-index="${r.__originalIndex}" class="selectBtn px-2 py-1 rounded ${isSelected ? 'bg-green-100' : 'bg-white'} shadow">${isSelected ? 'Selected' : 'Select'}</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // wire up view & select buttons
+      document.querySelectorAll('.viewBtn').forEach(b => {
+        b.addEventListener('click', () => {
+          const idx = Number(b.dataset.index);
+          const row = rows.find(rr => rr.__originalIndex === idx);
+          openModalForRow(row);
+        });
+      });
+      document.querySelectorAll('.selectBtn').forEach(b => {
+        b.addEventListener('click', () => {
+          const idx = Number(b.dataset.index);
+          const row = rows.find(rr => rr.__originalIndex === idx);
+          toggleSelectRow(row);
+          applyFiltersAndRender(); // refresh table to update 'Selected' state
+          renderSelectionsTable();
+        });
+      });
+    }
+
+    // Pagination controls
+    firstPage.addEventListener('click', () => { page = 1; applyFiltersAndRender(); });
+    prevPage.addEventListener('click', () => { page = Math.max(1, page-1); applyFiltersAndRender(); });
+    nextPage.addEventListener('click', () => { const tp = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); page = Math.min(tp, page+1); applyFiltersAndRender(); });
+    lastPage.addEventListener('click', () => { page = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); applyFiltersAndRender(); });
+
+    // Filter events
+    [filterDate, filterBox, homeWinsMin, homeWinsMax, awayWinsMin, awayWinsMax, searchInput].forEach(el => {
+      el.addEventListener('input', () => { page = 1; applyFiltersAndRender(); });
+    });
+
+    resetFilters.addEventListener('click', () => {
+      filterDate.value = '';
+      filterBox.value = '';
+      homeWinsMin.value = 0;
+      homeWinsMax.value = 999;
+      awayWinsMin.value = 0;
+      awayWinsMax.value = 999;
+      searchInput.value = '';
+      page = 1;
+      applyFiltersAndRender();
+    });
+
+    // selections tab toggle
+    toggleSelectionsBtn.addEventListener('click', () => {
+      const showingSelections = !selectionsSection.classList.contains('hidden');
+      if (showingSelections) {
+        selectionsSection.classList.add('hidden');
+        tableSection.classList.remove('hidden');
+        toggleSelectionsBtn.textContent = 'View FTP Selections';
+      } else {
+        selectionsSection.classList.remove('hidden');
+        tableSection.classList.add('hidden');
+        toggleSelectionsBtn.textContent = 'View FTP.NET';
+        renderSelectionsTable();
+      }
+    });
+
+    // selection storage
+    function loadSelections() {
+      try {
+        const s = localStorage.getItem('ftp_selections');
+        return s ? JSON.parse(s) : [];
+      } catch (e) { return []; }
+    }
+    function persistSelections() {
+      try { localStorage.setItem('ftp_selections', JSON.stringify(selectedRows)); } catch(e) {}
+    }
+
+    function toggleSelectRow(row) {
+      if (!row) return;
+      const idx = selectedRows.findIndex(r => r.__originalIndex === row.__originalIndex);
+      if (idx >= 0) {
+        selectedRows.splice(idx,1);
+      } else {
+        selectedRows.push(row);
+      }
+      persistSelections();
+    }
+
+    function renderSelectionsTable() {
+      if (!selectedRows || selectedRows.length === 0) {
+        selectionsBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-500">No selections yet</td></tr>';
+        return;
+      }
+      selectionsBody.innerHTML = selectedRows.map(r => {
+        const pred = r.PredictionLabel || '';
+        const predTag = pred === 'Home' ? `<span class="pred-home">${pred}</span>` : pred === 'Draw' ? `<span class="pred-draw">${pred}</span>` : pred === 'Away' ? `<span class="pred-away">${pred}</span>` : '';
+        const rowClass = (pred && parseResultLabel(r['Match Result']) && pred === parseResultLabel(r['Match Result'])) ? 'green-row' : (pred && parseResultLabel(r['Match Result']) && pred !== parseResultLabel(r['Match Result'])) ? 'red-row' : '';
+        return `
+          <tr class="${rowClass}">
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Date']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Team']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Team']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Box Correct Score']||'')}</td>
+            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Result']||'')}</td>
+            <td class="px-4 py-3 text-sm">${predTag}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    downloadSelections.addEventListener('click', () => {
+      if (!selectedRows || selectedRows.length === 0) { alert('No selections to download'); return; }
+      // Build CSV
+      const headers = Object.keys(selectedRows[0]).filter(k => !k.startsWith('__'));
+      const lines = [headers.join(',')];
+      for (const r of selectedRows) {
+        const row = headers.map(h => `"${(''+(r[h]||'')).replace(/"/g,'""')}"`);
+        lines.push(row.join(','));
+      }
+      const blob = new Blob([lines.join('\\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ftp_selections.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    clearSelectionsBtn.addEventListener('click', () => {
+      if (!confirm('Clear all selections?')) return;
+      selectedRows = [];
+      persistSelections();
+      renderSelectionsTable();
+      applyFiltersAndRender();
+    });
+
+    // Attempt to save to published CSV URL (will usually fail due to CORS/read-only)
+    saveSelections.addEventListener('click', async () => {
+      if (!selectedRows || selectedRows.length === 0) { alert('No selections to save'); return; }
+      try {
+        // WARNING: published CSV endpoints are read-only; this will probably fail.
+        const payload = JSON.stringify({ rows: selectedRows });
+        const res = await fetch(FTP_SAVE_CSV_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: payload });
+        if (!res.ok) throw new Error('Save failed: ' + res.status);
+        alert('Saved successfully. Verify your sheet. (Note: published CSVs usually are read-only — server-side scripts are recommended.)');
+      } catch (err) {
+        alert('Unable to save directly to the published Google Sheets CSV (CORS / read-only).\\nFallback: the selections will be downloaded to your device as CSV.\\nIf you want server-side saving, create a Google Apps Script Web App or a writable endpoint and I can provide the code/instructions.');
+        // fallback: download
+        downloadSelections.click();
+      }
+    });
+
+    // Modal handling
+    function openModalForRow(row) {
+      currentViewedRow = row;
+      modalTitle.textContent = `${row['Home Team'] || ''} vs ${row['Away Team'] || ''} — ${row['Match Date'] || ''}`;
+      // Home list
+      const homeItems = [
+        ['Home Form', row['Home Form'] || row['Home_Form'] || ''],
+        ['Home Wins', row['Home Wins'] || row['Home_Wins'] || row['HomeWins'] || ''],
+        ['H2H Home Wins', row['H2H Home Wins'] || row['H2H_Home_Wins'] || ''],
+        ['Home Table Pos', row['Home Table Pos'] || row['Home_Table_Pos'] || ''],
+        ['Home Avg Goals Scored', row['Home Avg Goals Scored'] || row['Home_Avg_Goals_Scored'] || ''],
+        ['Home Avg Goals Conceded', row['Home Avg Goals Conceded'] || row['Home_Avg_Goals_Conceded'] || ''],
+        ['Home Avg Time 1st Goal Scored', row['Home Avg Time 1st Goal Scored'] || row['Home_Avg_Time_1st_Goal_Scored'] || ''],
+        ['Home Avg Yellow Cards', row['Home Avg Yellow Cards'] || row['Home_Avg_Yellow_Cards'] || ''],
+        ['Home Avg Red Cards', row['Home Avg Red Cards'] || row['Home_Avg_Red_Cards'] || ''],
+        ['Home Avg Subs Used', row['Home Avg Subs Used'] || row['Home_Avg_Subs_Used'] || ''],
+        ['Home Biggest Victory', row['Home Biggest Victory'] || row['Home_Biggest_Victory'] || ''],
+        ['Home Biggest Defeat', row['Home Biggest Defeat'] || row['Home_Biggest_Defeat'] || ''],
+      ];
+      modalHomeList.innerHTML = homeItems.map(h => `<li><strong>${h[0]}:</strong> ${escapeHtml(h[1]||'')}</li>`).join('');
+
+      // Away list
+      const awayItems = [
+        ['Away Form', row['Away Form'] || row['Away_Form'] || ''],
+        ['Away Wins', row['Away Wins'] || row['Away_Wins'] || row['AwayWins'] || ''],
+        ['H2H Away Wins', row['H2H Away Wins'] || row['H2H_Away_Wins'] || ''],
+        ['H2H Draws', row['H2H Draws'] || row['H2H_Draws'] || ''],
+        ['Away Table Pos', row['Away Table Pos'] || row['Away_Table_Pos'] || ''],
+        ['Away Avg Goals Scored', row['Away Avg Goals Scored'] || row['Away_Avg_Goals_Scored'] || ''],
+        ['Away Avg Goals Conceded', row['Away Avg Goals Conceded'] || row['Away_Avg_Goals_Conceded'] || ''],
+        ['Away Avg Time 1st Goal Scored', row['Away Avg Time 1st Goal Scored'] || row['Away_Avg_Time_1st_Goal_Scored'] || ''],
+        ['Away Avg Yellow Cards', row['Away Avg Yellow Cards'] || row['Away_Avg_Yellow_Cards'] || ''],
+        ['Away Avg Red Cards', row['Away Avg Red Cards'] || row['Away_Avg_Red_Cards'] || ''],
+        ['Away Avg Subs Used', row['Away Avg Subs Used'] || row['Away_Avg_Subs_Used'] || ''],
+        ['Away Biggest Victory', row['Away Biggest Victory'] || row['Away_Biggest_Victory'] || ''],
+        ['Away Biggest Defeat', row['Away Biggest Defeat'] || row['Away_Biggest_Defeat'] || ''],
+      ];
+      modalAwayList.innerHTML = awayItems.map(h => `<li><strong>${h[0]}:</strong> ${escapeHtml(h[1]||'')}</li>`).join('');
+
+      // link
+      if (row['Match Link']) {
+        modalMatchLink.href = row['Match Link'];
+        modalMatchLink.classList.remove('hidden');
+      } else {
+        modalMatchLink.classList.add('hidden');
+      }
+
+      modalRoot.classList.remove('hidden');
+      modalRoot.style.display = 'flex';
+      // set select in modal
+      modalSelectBtn.onclick = () => {
+        toggleSelectRow(currentViewedRow);
+        persistSelections();
+        renderSelectionsTable();
+        applyFiltersAndRender();
+        closeModal();
+      };
+    }
+    function closeModal() {
+      modalRoot.classList.add('hidden');
+      modalRoot.style.display = 'none';
+      currentViewedRow = null;
+    }
+
+    // small utility: escape for html (used above already)
+    // function escapeHtml(s) { ... } - defined earlier
+
+    // initial fetch
+    fetchCsvAndRender();
+
+    // render selections initial
+    renderSelectionsTable();
+
+    // refresh button
+    refreshBtn.addEventListener('click', () => fetchCsvAndRender());
+
+    // expose closeModal globally for backdrop onclick
+    window.closeModal = closeModal;
+
+    // helper to open selections tab directly (optional)
+    document.getElementById('toggleSelectionsBtn').addEventListener('click', () => {
+      // handled above, but keep safe
+    });
+
+    // initialize empty UI states if needed (counts)
+    cardTotal.textContent = '0';
+    cardWon.textContent = '0';
+    cardPct.textContent = '0%';
+  </script>
+
+</body>
+</html>
