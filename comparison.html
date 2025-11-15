@@ -3,701 +3,664 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FTP.NET - Forecast Dashboard</title>
+  <title>FTP.NET — Comparison</title>
+  <meta name="description" content="FTP.NET — Match dashboard, filters, and FTP Selections (save to Google Sheets)" />
 
-  <!-- Tailwind CDN for quick styling -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
+  <!-- Basic styling (clean, responsive) -->
   <style>
-    /* Small custom tweaks */
-    .card-shadow { box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
-    .rounded-2xl { border-radius: 1rem; }
-    .modal-backdrop { background: rgba(0,0,0,0.35); }
-    /* small highlight for prediction tag */
-    .pred-home { background: rgba(0,90,224,0.12); color: #003a8c; padding: 0.25rem 0.5rem; border-radius: .375rem; }
-    .pred-draw { background: rgba(253,230,138,0.12); color: #7a5200; padding: 0.25rem 0.5rem; border-radius: .375rem; }
-    .pred-away { background: rgba(220,53,69,0.08); color: #7a1720; padding: 0.25rem 0.5rem; border-radius: .375rem; }
-    .table-row-hover:hover { background-color: #f8fafc; }
-    .green-row { background: rgba(40,167,69,0.06); }
-    .red-row { background: rgba(220,53,69,0.06); }
+    :root{
+      --blue:#005AE0; --blue-dark:#003d99; --green:#28A745; --red:#DC3545; --white:#ffffff;
+      --card-radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:#f4f6f9; color:#111}
+    header{background:var(--blue); color:var(--white); padding:16px 20px; display:flex; gap:16px; align-items:center; justify-content:space-between}
+    header h1{margin:0;font-size:20px}
+    .container{max-width:1200px;margin:20px auto;padding:0 16px}
+    .btn{background:var(--blue); color:var(--white); border:none; padding:10px 14px; border-radius:8px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+    .btn.secondary{background:#fff; color:#111; border:1px solid #e6e9ef}
+    .btn.ghost{background:transparent; color:inherit; border:1px solid rgba(255,255,255,0.1)}
+    .flex{display:flex}
+    .gap-4{gap:16px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
+    .card{padding:18px;border-radius:var(--card-radius); color:var(--white); box-shadow:0 8px 24px rgba(16,24,40,0.06)}
+    .card.blue{background:linear-gradient(90deg,var(--blue), #2b73ff)}
+    .card.green{background:linear-gradient(90deg,var(--green), #39c16a)}
+    .card.gradient{background:linear-gradient(90deg,var(--blue), var(--green))}
+    .card .label{font-size:12px;opacity:0.9}
+    .card .value{font-size:24px;font-weight:700;margin-top:6px}
+    .filter-panel{background:#fff;padding:14px;border-radius:12px;margin-top:18px;box-shadow:0 8px 24px rgba(16,24,40,0.04)}
+    .filters-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .filters-grid input,.filters-grid select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
+    .table-wrap{margin-top:18px;background:#fff;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(16,24,40,0.04);overflow:auto}
+    table{width:100%;border-collapse:collapse;min-width:1100px}
+    th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #f0f2f6}
+    thead th{background:var(--blue-dark);color:var(--white);position:sticky;top:0}
+    tr:hover td{background:#fbfcff}
+    tr.correct td{background:#e9f7ec !important} /* green for correct */
+    tr.incorrect td{background:#ffecec !important} /* red for incorrect */
+    .pill{display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px}
+    .pill.home{background:#e7f0ff;color:#003a9b}
+    .pill.draw{background:#fff7e6;color:#a97500}
+    .pill.away{background:#ffecec;color:#9b1b1b}
+    .actions button{margin-right:8px}
+    .pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px}
+    .popup{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+    .modal{width:100%;max-width:920px;background:#fff;border-radius:12px;padding:18px;max-height:90vh;overflow:auto}
+    .modal h3{margin:0 0 8px 0}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .stat-list{list-style:none;padding:0;margin:0}
+    .stat-list li{padding:6px 0;border-bottom:1px dashed #f1f3f6;font-size:13px}
+    .selections-panel{margin-top:18px;background:#fff;padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(16,24,40,0.04)}
+    .small{font-size:13px;color:#666}
+    @media (max-width:980px){
+      .filters-grid{grid-template-columns:repeat(2,1fr)}
+      .cards{grid-template-columns:repeat(1,1fr)}
+    }
+    @media (max-width:600px){
+      .filters-grid{grid-template-columns:1fr}
+      table{min-width:980px}
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
-
-  <div class="max-w-7xl mx-auto p-4 md:p-8">
-
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-      <div class="flex items-center gap-3">
-        <a href="https://datacompass360.github.io/forecast2.0/" class="inline-flex items-center gap-2 bg-white px-3 py-2 rounded shadow hover:shadow-lg">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-blue-600">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Back
-        </a>
-        <div>
-          <h1 class="text-2xl md:text-3xl font-semibold">FTP.NET</h1>
-          <div class="text-sm text-gray-500">Fetches predictions from Google Sheets · Responsive dashboard</div>
-        </div>
-      </div>
-
-      <div class="flex gap-2 items-center">
-        <button id="toggleSelectionsBtn" class="px-3 py-2 rounded bg-blue-50 hover:bg-blue-100">View FTP Selections</button>
-        <button id="refreshBtn" class="px-3 py-2 rounded bg-white shadow">Refresh</button>
-      </div>
-    </header>
-
-    <!-- Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#005AE0 0%, #0077FF 100%); color:white;">
-        <div class="text-sm">Total Matches</div>
-        <div id="cardTotal" class="text-2xl font-bold">0</div>
-        <div class="text-xs opacity-90 mt-1">Matches loaded after filters</div>
-      </div>
-
-      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#28A745 0%, #39D07A 100%); color:white;">
-        <div class="text-sm">Matches Won</div>
-        <div id="cardWon" class="text-2xl font-bold">0</div>
-        <div class="text-xs opacity-90 mt-1">Predictions that matched Match Result</div>
-      </div>
-
-      <div class="p-4 rounded-2xl card-shadow" style="background: linear-gradient(90deg,#005AE0 0%, #28A745 100%); color:white;">
-        <div class="text-sm">Percentage Won</div>
-        <div id="cardPct" class="text-2xl font-bold">0%</div>
-        <div class="text-xs opacity-90 mt-1">Based on current filters</div>
-      </div>
+<body>
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <a href="https://datacompass360.github.io/forecast2.0/" class="btn secondary" style="display:inline-flex;align-items:center;gap:8px;background:#fff;color:#111">
+        ⬅ Back
+      </a>
+      <h1>FTP.NET — Comparison</h1>
     </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <button id="refreshBtn" class="btn">Refresh</button>
+      <button id="viewSelectionsBtn" class="btn secondary">View FTP Selections</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Cards -->
+    <section class="cards" aria-label="analytics-cards">
+      <div class="card blue">
+        <div class="label">Total Matches</div>
+        <div class="value" id="cardTotal">0</div>
+        <div class="small">Matches after filters</div>
+      </div>
+      <div class="card green">
+        <div class="label">Matches Won</div>
+        <div class="value" id="cardWon">0</div>
+        <div class="small">Predictions matching result</div>
+      </div>
+      <div class="card gradient">
+        <div class="label">Percentage Won</div>
+        <div class="value" id="cardPct">0%</div>
+        <div class="small">Based on current filters</div>
+      </div>
+    </section>
 
     <!-- Filters -->
-    <div class="bg-white p-4 rounded-xl shadow mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-gray-600">Match Date</label>
-          <select id="filterDate" class="mt-1 block w-full p-2 border rounded-md">
-            <option value="">All Dates</option>
-          </select>
-        </div>
+    <section class="filter-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>Filters</strong>
+        <div class="small">Search & filters apply together</div>
+      </div>
 
+      <div class="filters-grid">
         <div>
-          <label class="block text-xs font-medium text-gray-600">Box Correct Score</label>
-          <select id="filterBox" class="mt-1 block w-full p-2 border rounded-md">
-            <option value="">All</option>
-          </select>
+          <label class="small">Match Date</label>
+          <select id="filterDate"><option value="">All Dates</option></select>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-600">Home Wins (min)</label>
-          <input id="homeWinsMin" type="number" value="0" class="mt-1 block w-full p-2 border rounded-md" />
+          <label class="small">Box Correct Score</label>
+          <select id="filterBox"><option value="">All Scores</option></select>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-600">Home Wins (max)</label>
-          <input id="homeWinsMax" type="number" value="999" class="mt-1 block w-full p-2 border rounded-md" />
+          <label class="small">Home Wins (min)</label>
+          <input id="filterHomeWinsMin" type="number" placeholder="0" />
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-600">Away Wins (min)</label>
-          <input id="awayWinsMin" type="number" value="0" class="mt-1 block w-full p-2 border rounded-md" />
+          <label class="small">Home Wins (max)</label>
+          <input id="filterHomeWinsMax" type="number" placeholder="999" />
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-600">Away Wins (max)</label>
-          <input id="awayWinsMax" type="number" value="999" class="mt-1 block w-full p-2 border rounded-md" />
+          <label class="small">Away Wins (min)</label>
+          <input id="filterAwayWinsMin" type="number" placeholder="0" />
         </div>
 
-        <div class="md:col-span-4">
-          <label class="block text-xs font-medium text-gray-600">Search Teams</label>
-          <input id="searchInput" placeholder="Search Home or Away team" class="mt-1 block w-full p-2 border rounded-md" />
+        <div>
+          <label class="small">Away Wins (max)</label>
+          <input id="filterAwayWinsMax" type="number" placeholder="999" />
         </div>
 
-        <div class="flex items-end gap-2">
-          <button id="resetFilters" class="px-3 py-2 rounded bg-white shadow">Reset</button>
-          <div class="text-sm text-gray-500 self-center"> <span id="resultsCount">0</span> results</div>
+        <div style="grid-column: span 2;">
+          <label class="small">Search Teams</label>
+          <input id="searchInput" placeholder="Search Home or Away team" />
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:end">
+          <button id="resetFilters" class="btn secondary">Reset</button>
+          <div class="small" id="resultsCount" style="padding-left:8px"></div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Main content container -->
-    <div id="mainContainer">
+    <!-- Table -->
+    <section class="table-wrap" role="region" aria-label="matches-table">
+      <table id="matchesTable">
+        <thead>
+          <tr>
+            <th>Match Date</th>
+            <th>Home Team</th>
+            <th>Away Team</th>
+            <th>Box Correct Score</th>
+            <th>Home Avg Goals Scored</th>
+            <th>Home Avg Goals Conceded</th>
+            <th>Away Avg Time 1st Goal Scored</th>
+            <th>Away Avg Time 1st Goal Conceded</th>
+            <th>Match Result</th>
+            <th>Prediction</th>
+            <th>View</th>
+            <th>Select</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
 
-      <!-- Table view -->
-      <section id="tableSection">
-        <div class="overflow-x-auto bg-white rounded-xl shadow">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-blue-900 text-white">
-              <tr>
-                <th class="px-4 py-3 text-left text-sm">Match Date</th>
-                <th class="px-4 py-3 text-left text-sm">Home Team</th>
-                <th class="px-4 py-3 text-left text-sm">Away Team</th>
-                <th class="px-4 py-3 text-left text-sm">Box Correct Score</th>
-                <th class="px-4 py-3 text-left text-sm">Home Avg Goals Scored</th>
-                <th class="px-4 py-3 text-left text-sm">Home Avg Goals Conceded</th>
-                <th class="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Scored</th>
-                <th class="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Conceded</th>
-                <th class="px-4 py-3 text-left text-sm">Match Result</th>
-                <th class="px-4 py-3 text-left text-sm">Prediction</th>
-                <th class="px-4 py-3 text-left text-sm">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
-              <tr><td colspan="11" class="p-6 text-center text-gray-500" id="loadingCell">Loading matches…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="mt-4 flex items-center justify-between">
-          <div class="text-sm text-gray-600">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></div>
-          <div class="flex gap-2">
-            <button id="firstPage" class="px-3 py-2 rounded bg-white shadow">First</button>
-            <button id="prevPage" class="px-3 py-2 rounded bg-white shadow">Prev</button>
-            <button id="nextPage" class="px-3 py-2 rounded bg-white shadow">Next</button>
-            <button id="lastPage" class="px-3 py-2 rounded bg-white shadow">Last</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- FTP Selections section (hidden initially) -->
-      <section id="selectionsSection" class="hidden">
-        <div class="bg-white rounded-xl shadow p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">FTP Selections</h2>
-            <div class="flex gap-2">
-              <button id="downloadSelections" class="px-3 py-2 rounded bg-blue-600 text-white shadow">Download CSV</button>
-              <button id="saveSelections" class="px-3 py-2 rounded bg-green-600 text-white shadow">Save to Google (attempt)</button>
-              <button id="clearSelections" class="px-3 py-2 rounded bg-red-500 text-white shadow">Clear</button>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-blue-900 text-white">
-                <tr>
-                  <th class="px-4 py-3 text-left text-sm">Match Date</th>
-                  <th class="px-4 py-3 text-left text-sm">Home Team</th>
-                  <th class="px-4 py-3 text-left text-sm">Away Team</th>
-                  <th class="px-4 py-3 text-left text-sm">Box Correct Score</th>
-                  <th class="px-4 py-3 text-left text-sm">Match Result</th>
-                  <th class="px-4 py-3 text-left text-sm">Prediction</th>
-                </tr>
-              </thead>
-              <tbody id="selectionsBody">
-                <tr><td colspan="6" class="p-6 text-center text-gray-500">No selections yet</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- Modal -->
-    <div id="modalRoot" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-      <div class="absolute inset-0 modal-backdrop" onclick="closeModal()"></div>
-      <div class="relative max-w-4xl w-full bg-white rounded-xl shadow-lg overflow-auto p-6">
-        <div class="flex items-start justify-between">
-          <h3 id="modalTitle" class="text-xl font-semibold">Match Detail</h3>
-          <div class="flex gap-2">
-            <a id="modalMatchLink" href="#" target="_blank" class="px-3 py-2 rounded bg-blue-600 text-white hidden">Match Link</a>
-            <button onclick="closeModal()" class="px-3 py-2 rounded bg-gray-100">Close</button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div class="p-4 border rounded">
-            <h4 class="font-semibold">Home Stats</h4>
-            <ul id="modalHomeList" class="mt-2 space-y-1 text-sm"></ul>
-          </div>
-
-          <div class="p-4 border rounded">
-            <h4 class="font-semibold">Away Stats</h4>
-            <ul id="modalAwayList" class="mt-2 space-y-1 text-sm"></ul>
-          </div>
-        </div>
-
-        <div class="mt-4">
-          <button id="modalSelectBtn" class="px-4 py-2 rounded bg-green-600 text-white shadow">Select this Match</button>
+      <div class="pager" style="margin-top:14px">
+        <div style="flex:1;align-self:center" id="pageInfo"></div>
+        <div>
+          <button id="firstPage" class="btn secondary">First</button>
+          <button id="prevPage" class="btn secondary">Prev</button>
+          <button id="nextPage" class="btn secondary">Next</button>
+          <button id="lastPage" class="btn secondary">Last</button>
         </div>
       </div>
+    </section>
+
+    <!-- Selections -->
+    <section class="selections-panel" id="selectionsPanel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>FTP Selections</strong>
+          <div class="small">Selected matches you can save to Google Sheets (or download)</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="downloadCsv" class="btn secondary">Download CSV</button>
+          <button id="saveToGoogle" class="btn">Save to Google</button>
+          <button id="clearSelections" class="btn secondary">Clear</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;overflow:auto">
+        <table id="selectionsTable" style="min-width:700px">
+          <thead>
+            <tr>
+              <th>Match Date</th><th>Home</th><th>Away</th><th>Correct Score</th><th>Result</th><th>Prediction</th><th>Remove</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal / Popup -->
+  <div id="modalRoot" style="display:none" class="popup" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="modalTitle"></h3>
+        <div style="display:flex;gap:8px">
+          <a id="matchLink" class="btn secondary" target="_blank" rel="noopener" style="display:none">Match Link</a>
+          <button id="closeModal" class="btn secondary">Close</button>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:12px" id="modalBody"></div>
     </div>
-
-    <footer class="mt-8 text-center text-sm text-gray-500">Built with ❤️ · FTP.NET</footer>
-
   </div>
 
-  <!-- Script -->
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <script>
-    // Configuration (CSV sources)
-    const DATA_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv';
-    const FTP_SAVE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv';
+  (function(){
+    // Config
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv";
+    const SAVE_ENDPOINT = "https://script.google.com/macros/s/AKfycbwGKsJJgZfYQGhoX5QUlJDJ96UCfcx9h1hzYvdI4nDCbqtxIqb00tFdWo4Uk8aOy4fd/exec";
 
-    // UI elements
-    const tableBody = document.getElementById('tableBody');
-    const loadingCell = document.getElementById('loadingCell');
-    const filterDate = document.getElementById('filterDate');
-    const filterBox = document.getElementById('filterBox');
-    const homeWinsMin = document.getElementById('homeWinsMin');
-    const homeWinsMax = document.getElementById('homeWinsMax');
-    const awayWinsMin = document.getElementById('awayWinsMin');
-    const awayWinsMax = document.getElementById('awayWinsMax');
-    const searchInput = document.getElementById('searchInput');
-    const resetFilters = document.getElementById('resetFilters');
-    const resultsCount = document.getElementById('resultsCount');
-
-    const cardTotal = document.getElementById('cardTotal');
-    const cardWon = document.getElementById('cardWon');
-    const cardPct = document.getElementById('cardPct');
-
-    const toggleSelectionsBtn = document.getElementById('toggleSelectionsBtn');
-    const tableSection = document.getElementById('tableSection');
-    const selectionsSection = document.getElementById('selectionsSection');
-
-    const selectionsBody = document.getElementById('selectionsBody');
-    const downloadSelections = document.getElementById('downloadSelections');
-    const saveSelections = document.getElementById('saveSelections');
-    const clearSelectionsBtn = document.getElementById('clearSelections');
-
-    const currentPageLabel = document.getElementById('currentPage');
-    const totalPagesLabel = document.getElementById('totalPages');
-    const firstPage = document.getElementById('firstPage');
-    const prevPage = document.getElementById('prevPage');
-    const nextPage = document.getElementById('nextPage');
-    const lastPage = document.getElementById('lastPage');
-
-    const modalRoot = document.getElementById('modalRoot');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalHomeList = document.getElementById('modalHomeList');
-    const modalAwayList = document.getElementById('modalAwayList');
-    const modalMatchLink = document.getElementById('modalMatchLink');
-    const modalSelectBtn = document.getElementById('modalSelectBtn');
-
-    const refreshBtn = document.getElementById('refreshBtn');
-
-    // State
-    let rows = [];                 // all parsed rows
-    let filtered = [];             // filtered rows
-    let page = 1;
+    // Data
+    let allRows = [];
+    let filtered = [];
+    let selections = []; // saved selections
     const PAGE_SIZE = 30;
-    let selectedRows = loadSelections(); // selections persisted to localStorage
-    let currentViewedRow = null;
+    let page = 1;
 
-    // CSV helper
-    function parseCSV(text) {
-      // Simple CSV parser that handles quoted values
-      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-      if (lines.length === 0) return [];
-      const headers = splitCsvLine(lines[0]).map(h => h.trim());
-      const out = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = splitCsvLine(lines[i]);
-        if (cols.length === 0) continue;
-        const obj = {};
-        for (let j = 0; j < headers.length; j++) {
-          obj[headers[j]] = (cols[j] || '').trim();
-        }
-        obj.__originalIndex = i - 1;
-        obj.PredictionLabel = parsePredictionFromBox(obj['Box Correct Score'] || '');
-        out.push(obj);
+    // Utility: normalize column names (to support multiple variants)
+    function col(r, names){
+      for(const n of names){
+        if(r[n] !== undefined) return r[n];
       }
-      return out;
-    }
-    function splitCsvLine(line) {
-      const result = [];
-      let cur = '', inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"') {
-          inQuotes = !inQuotes;
-          continue;
-        }
-        if (ch === ',' && !inQuotes) {
-          result.push(cur);
-          cur = '';
-          continue;
-        }
-        cur += ch;
-      }
-      result.push(cur);
-      return result;
+      return "";
     }
 
-    function parsePredictionFromBox(box) {
-      if (!box) return '';
-      const m = box.match(/(\d+)\s*-\s*(\d+)/);
-      if (!m) return '';
-      const h = parseInt(m[1],10), a = parseInt(m[2],10);
-      if (h > a) return 'Home';
-      if (h === a) return 'Draw';
-      return 'Away';
+    function parsePrediction(score){
+      if(!score) return "";
+      const m = (""+score).match(/(\d+)\s*-\s*(\d+)/);
+      if(!m) return "";
+      const h = parseInt(m[1],10), a=parseInt(m[2],10);
+      if(h>a) return "Home";
+      if(h===a) return "Draw";
+      return "Away";
     }
 
-    function parseResultLabel(result) {
-      if (!result) return '';
-      const m = (''+result).match(/(\d+)\s*-\s*(\d+)/);
-      if (!m) return '';
-      const h = parseInt(m[1],10), a = parseInt(m[2],10);
-      if (h > a) return 'Home';
-      if (h === a) return 'Draw';
-      return 'Away';
-    }
-
-    // Numeric helper (robust)
-    function toNum(v) {
-      if (!v && v !== 0) return 0;
-      const n = parseFloat((''+v).replace(/[^0-9.-]/g,''));
-      return isNaN(n) ? 0 : n;
-    }
-
-    // Load CSV
-    async function fetchCsvAndRender() {
-      tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-gray-500">Loading matches…</td></tr>';
-      try {
-        const res = await fetch(DATA_CSV_URL);
-        if (!res.ok) throw new Error('Failed to fetch CSV');
+    // Fetch CSV and initialize UI
+    async function loadSheet(){
+      try{
+        document.getElementById('refreshBtn').disabled = true;
+        const res = await fetch(SHEET_CSV_URL);
+        if(!res.ok) throw new Error("Failed to fetch sheet");
         const text = await res.text();
-        rows = parseCSV(text);
-        applyFiltersAndRender();
-        populateDropdowns();
-      } catch (err) {
-        tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-red-500">Error loading CSV: '+ err.message +'</td></tr>';
-        console.error(err);
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        allRows = parsed.data.map((r, idx) => {
+          // keep original index for identity
+          r.__idx = idx;
+          // normalize some likely column names for backward compatibility
+          r.__matchDate = col(r, ["Match Date","Match_Date","MatchDate","Match"]);
+          r.__home = col(r, ["Home Team","Home_Team","Home"]);
+          r.__away = col(r, ["Away Team","Away_Team","Away"]);
+          r.__box = col(r, ["Box Correct Score","Box_Correct_Score","Correct Score","Correct_Score","BoxScore"]);
+          r.__result = col(r, ["Match Result","Match_Result","Result"]);
+          // commonly-supplied stat columns (optional)
+          r.__homeAvgGoalsScored = col(r, ["Home Avg Goals Scored","Home_Avg_Goals_Scored"]);
+          r.__homeAvgGoalsConceded = col(r, ["Home Avg Goals Conceded","Home_Avg_Goals_Conceded"]);
+          r.__awayAvgTime1stScored = col(r, ["Away Avg Time 1st Goal Scored","Away_Avg_Time_1st_Goal_Scored"]);
+          r.__awayAvgTime1stConceded = col(r, ["Away Avg Time 1st Goal Conceded","Away_Avg_Time_1st_Goal_Conceded"]);
+          r.__homeWins = Number(col(r, ["Home Wins","Home_Wins"]) || 0);
+          r.__awayWins = Number(col(r, ["Away Wins","Away_Wins"]) || 0);
+          r.__link = col(r, ["Match Link","Link","match_link"]);
+          r.__prediction = parsePrediction(r.__box);
+          return r;
+        });
+        initFilters();
+        applyFilters();
+      }catch(err){
+        alert("Error loading sheet: " + err.message);
+      } finally {
+        document.getElementById('refreshBtn').disabled = false;
       }
     }
 
-    // Build dynamic dropdowns
-    function populateDropdowns() {
-      const dates = Array.from(new Set(rows.map(r => r['Match Date']).filter(Boolean))).sort();
-      const boxes = Array.from(new Set(rows.map(r => r['Box Correct Score']).filter(Boolean))).sort();
-      filterDate.innerHTML = '<option value="">All Dates</option>' + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-      filterBox.innerHTML = '<option value="">All</option>' + boxes.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+    // Initialize dynamic dropdowns (dates, box scores)
+    function initFilters(){
+      const dates = Array.from(new Set(allRows.map(r=>r.__matchDate).filter(Boolean))).sort();
+      const boxscores = Array.from(new Set(allRows.map(r=>r.__box).filter(Boolean))).sort();
+
+      const dateSel = document.getElementById('filterDate');
+      dateSel.innerHTML = '<option value="">All Dates</option>' + dates.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+      const boxSel = document.getElementById('filterBox');
+      boxSel.innerHTML = '<option value="">All Scores</option>' + boxscores.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+
+      // Wire up filter controls
+      const controls = ['filterDate','filterBox','filterHomeWinsMin','filterHomeWinsMax','filterAwayWinsMin','filterAwayWinsMax','searchInput'];
+      controls.forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.oninput = () => { page = 1; applyFilters(); };
+      });
+
+      document.getElementById('resetFilters').onclick = () => {
+        document.getElementById('filterDate').value = "";
+        document.getElementById('filterBox').value = "";
+        document.getElementById('filterHomeWinsMin').value = "";
+        document.getElementById('filterHomeWinsMax').value = "";
+        document.getElementById('filterAwayWinsMin').value = "";
+        document.getElementById('filterAwayWinsMax').value = "";
+        document.getElementById('searchInput').value = "";
+        page = 1; applyFilters();
+      };
     }
 
-    // Escape helper for safety in HTML insertion
-    function escapeHtml(s) {
-      return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    // Escape helper for safe HTML injection of cell values
+    function escapeHtml(s){
+      if(s === undefined || s === null) return "";
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     }
 
-    // Filtering logic
-    function applyFiltersAndRender() {
-      const dateVal = filterDate.value;
-      const boxVal = filterBox.value;
-      const hMin = Number(homeWinsMin.value) || 0;
-      const hMax = Number(homeWinsMax.value) || 9999;
-      const aMin = Number(awayWinsMin.value) || 0;
-      const aMax = Number(awayWinsMax.value) || 9999;
-      const s = (searchInput.value || '').toLowerCase();
+    // Apply filters and update UI
+    function applyFilters(){
+      const dateVal = document.getElementById('filterDate').value;
+      const boxVal = document.getElementById('filterBox').value;
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const homeMin = Number(document.getElementById('filterHomeWinsMin').value || -Infinity);
+      const homeMax = Number(document.getElementById('filterHomeWinsMax').value || Infinity);
+      const awayMin = Number(document.getElementById('filterAwayWinsMin').value || -Infinity);
+      const awayMax = Number(document.getElementById('filterAwayWinsMax').value || Infinity);
 
-      filtered = rows.filter(r => {
-        if (dateVal && r['Match Date'] !== dateVal) return false;
-        if (boxVal && !((r['Box Correct Score']||'').includes(boxVal))) return false;
-        // home wins may be in various column names: 'Home Wins', 'Home_Wins' (try both)
-        const hWins = toNum(r['Home Wins'] || r['Home_Wins'] || r['HomeWins'] || 0);
-        const aWins = toNum(r['Away Wins'] || r['Away_Wins'] || r['AwayWins'] || 0);
-        if (hWins < hMin || hWins > hMax) return false;
-        if (aWins < aMin || aWins > aMax) return false;
-        if (s) {
-          const home = (r['Home Team']||'').toLowerCase();
-          const away = (r['Away Team']||'').toLowerCase();
-          if (!home.includes(s) && !away.includes(s)) return false;
+      filtered = allRows.filter(r=>{
+        if(dateVal && r.__matchDate !== dateVal) return false;
+        if(boxVal && (!r.__box || !r.__box.includes(boxVal))) return false;
+        if(q){
+          const h = (r.__home || "").toLowerCase();
+          const a = (r.__away || "").toLowerCase();
+          if(!h.includes(q) && !a.includes(q)) return false;
         }
+        if(isFinite(homeMin) && r.__homeWins < homeMin) return false;
+        if(isFinite(homeMax) && r.__homeWins > homeMax) return false;
+        if(isFinite(awayMin) && r.__awayWins < awayMin) return false;
+        if(isFinite(awayMax) && r.__awayWins > awayMax) return false;
         return true;
       });
 
-      // reset to first page if page out of range
-      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-      if (page > totalPages) page = 1;
-
-      renderTable();
       renderCards();
-      resultsCount.textContent = filtered.length;
+      renderTable();
     }
 
-    // Render cards
-    function renderCards() {
+    // Cards: total, won, pct
+    function renderCards(){
       const total = filtered.length;
-      const won = filtered.filter(r => {
-        const pred = r.PredictionLabel;
-        const actual = parseResultLabel(r['Match Result']);
-        return pred && actual && pred === actual;
+      const won = filtered.filter(r=>{
+        const pred = r.__prediction;
+        const actualLabel = parsePrediction(r.__result);
+        return pred && actualLabel && pred === actualLabel;
       }).length;
-      const pct = total === 0 ? 0 : Math.round((won/total)*1000)/10;
-      cardTotal.textContent = total;
-      cardWon.textContent = won;
-      cardPct.textContent = pct + '%';
+      const pct = total===0 ? 0 : Math.round((won/total)*1000)/10;
+      document.getElementById('cardTotal').textContent = total;
+      document.getElementById('cardWon').textContent = won;
+      document.getElementById('cardPct').textContent = pct + '%';
+      document.getElementById('resultsCount').textContent = `${total} results`;
     }
 
-    // Render table page
-    function renderTable() {
+    // Table rendering & pagination
+    function renderTable(){
+      const tbody = document.querySelector('#matchesTable tbody');
+      tbody.innerHTML = "";
       const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-      totalPagesLabel.textContent = totalPages;
-      currentPageLabel.textContent = page;
+      if(page < 1) page = 1;
+      if(page > totalPages) page = totalPages;
 
-      const start = (page-1) * PAGE_SIZE;
+      const start = (page-1)*PAGE_SIZE;
       const pageRows = filtered.slice(start, start + PAGE_SIZE);
 
-      if (pageRows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="11" class="p-6 text-center text-gray-500">No matches found</td></tr>';
-        return;
+      for(const r of pageRows){
+        const pred = r.__prediction;
+        const actualLabel = parsePrediction(r.__result);
+        const correct = pred && actualLabel && pred === actualLabel;
+        const tr = document.createElement('tr');
+        tr.className = correct ? 'correct' : 'incorrect';
+        tr.innerHTML = `
+          <td>${escapeHtml(r.__matchDate)}</td>
+          <td>${escapeHtml(r.__home)}</td>
+          <td>${escapeHtml(r.__away)}</td>
+          <td>${escapeHtml(r.__box)}</td>
+          <td>${escapeHtml(r.__homeAvgGoalsScored || '')}</td>
+          <td>${escapeHtml(r.__homeAvgGoalsConceded || '')}</td>
+          <td>${escapeHtml(r.__awayAvgTime1stScored || '')}</td>
+          <td>${escapeHtml(r.__awayAvgTime1stConceded || '')}</td>
+          <td>${escapeHtml(r.__result || '')}</td>
+          <td><span class="pill ${pred==='Home'?'home':pred==='Draw'?'draw':'away'}">${escapeHtml(pred)}</span></td>
+          <td><button class="btn secondary viewBtn">View</button></td>
+          <td><button class="btn selectBtn">${isSelected(r)?'Selected':'Select'}</button></td>
+        `;
+        // attach dataset for handlers
+        tr.querySelector('.viewBtn').dataset.idx = r.__idx;
+        tr.querySelector('.selectBtn').dataset.idx = r.__idx;
+        tbody.appendChild(tr);
       }
 
-      tableBody.innerHTML = pageRows.map(r => {
-        const pred = r.PredictionLabel || '';
-        const actualLabel = parseResultLabel(r['Match Result'] || '');
-        const rowClass = (pred && actualLabel && pred === actualLabel) ? 'green-row' : (pred && actualLabel && pred !== actualLabel) ? 'red-row' : '';
-        const predTag = pred === 'Home' ? `<span class="pred-home">${pred}</span>` : pred === 'Draw' ? `<span class="pred-draw">${pred}</span>` : pred === 'Away' ? `<span class="pred-away">${pred}</span>` : '';
-        const isSelected = selectedRows.some(s => s.__originalIndex === r.__originalIndex);
-        return `
-          <tr class="table-row-hover ${rowClass}">
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Date']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Team']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Team']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Box Correct Score']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Avg Goals Scored']||r['Home_Avg_Goals_Scored']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Avg Goals Conceded']||r['Home_Avg_Goals_Conceded']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Avg Time 1st Goal Scored']||r['Away_Avg_Time_1st_Goal_Scored']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Avg Time 1st Goal Conceded']||r['Away_Avg_Time_1st_Goal_Conceded']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Result']||'')}</td>
-            <td class="px-4 py-3 text-sm">${predTag}</td>
-            <td class="px-4 py-3 text-sm flex gap-2">
-              <button data-index="${r.__originalIndex}" class="viewBtn px-2 py-1 rounded bg-white shadow">View</button>
-              <button data-index="${r.__originalIndex}" class="selectBtn px-2 py-1 rounded ${isSelected ? 'bg-green-100' : 'bg-white'} shadow">${isSelected ? 'Selected' : 'Select'}</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
+      // Pager info
+      const pageInfo = document.getElementById('pageInfo');
+      pageInfo.textContent = `Page ${page} of ${totalPages}`;
 
-      // wire up view & select buttons
-      document.querySelectorAll('.viewBtn').forEach(b => {
-        b.addEventListener('click', () => {
-          const idx = Number(b.dataset.index);
-          const row = rows.find(rr => rr.__originalIndex === idx);
-          openModalForRow(row);
-        });
+      // wire pager buttons
+      document.getElementById('firstPage').onclick = ()=>{ page = 1; renderTable(); };
+      document.getElementById('prevPage').onclick = ()=>{ page = Math.max(1,page-1); renderTable(); };
+      document.getElementById('nextPage').onclick = ()=>{ page = Math.min(totalPages,page+1); renderTable(); };
+      document.getElementById('lastPage').onclick = ()=>{ page = totalPages; renderTable(); };
+
+      // wire view/select buttons
+      [...document.querySelectorAll('.viewBtn')].forEach(btn=>{
+        btn.onclick = ()=> showModalByIdx(Number(btn.dataset.idx));
       });
-      document.querySelectorAll('.selectBtn').forEach(b => {
-        b.addEventListener('click', () => {
-          const idx = Number(b.dataset.index);
-          const row = rows.find(rr => rr.__originalIndex === idx);
-          toggleSelectRow(row);
-          applyFiltersAndRender(); // refresh table to update 'Selected' state
+      [...document.querySelectorAll('.selectBtn')].forEach(btn=>{
+        btn.onclick = ()=> toggleSelectByIdx(Number(btn.dataset.idx));
+      });
+    }
+
+    // Selection helpers
+    function isSelected(row){
+      return selections.some(s => s.__idx === row.__idx);
+    }
+
+    function toggleSelectByIdx(idx){
+      const row = allRows.find(r=>r.__idx===idx);
+      if(!row) return;
+      if(isSelected(row)){
+        selections = selections.filter(s=>s.__idx!==idx);
+      } else {
+        selections.push(row);
+      }
+      renderTable();
+      renderSelectionsTable();
+    }
+
+    function renderSelectionsTable(){
+      const tbody = document.querySelector('#selectionsTable tbody');
+      tbody.innerHTML = "";
+      for(const r of selections){
+        const pred = r.__prediction;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r.__matchDate)}</td>
+          <td>${escapeHtml(r.__home)}</td>
+          <td>${escapeHtml(r.__away)}</td>
+          <td>${escapeHtml(r.__box)}</td>
+          <td>${escapeHtml(r.__result||'')}</td>
+          <td>${escapeHtml(pred)}</td>
+          <td><button class="btn secondary removeBtn">Remove</button></td>
+        `;
+        tr.querySelector('.removeBtn').onclick = ()=> {
+          selections = selections.filter(s=>s.__idx!==r.__idx);
           renderSelectionsTable();
-        });
-      });
-    }
-
-    // Pagination controls
-    firstPage.addEventListener('click', () => { page = 1; applyFiltersAndRender(); });
-    prevPage.addEventListener('click', () => { page = Math.max(1, page-1); applyFiltersAndRender(); });
-    nextPage.addEventListener('click', () => { const tp = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); page = Math.min(tp, page+1); applyFiltersAndRender(); });
-    lastPage.addEventListener('click', () => { page = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); applyFiltersAndRender(); });
-
-    // Filter events
-    [filterDate, filterBox, homeWinsMin, homeWinsMax, awayWinsMin, awayWinsMax, searchInput].forEach(el => {
-      el.addEventListener('input', () => { page = 1; applyFiltersAndRender(); });
-    });
-
-    resetFilters.addEventListener('click', () => {
-      filterDate.value = '';
-      filterBox.value = '';
-      homeWinsMin.value = 0;
-      homeWinsMax.value = 999;
-      awayWinsMin.value = 0;
-      awayWinsMax.value = 999;
-      searchInput.value = '';
-      page = 1;
-      applyFiltersAndRender();
-    });
-
-    // selections tab toggle
-    toggleSelectionsBtn.addEventListener('click', () => {
-      const showingSelections = !selectionsSection.classList.contains('hidden');
-      if (showingSelections) {
-        selectionsSection.classList.add('hidden');
-        tableSection.classList.remove('hidden');
-        toggleSelectionsBtn.textContent = 'View FTP Selections';
-      } else {
-        selectionsSection.classList.remove('hidden');
-        tableSection.classList.add('hidden');
-        toggleSelectionsBtn.textContent = 'View FTP.NET';
-        renderSelectionsTable();
+          renderTable();
+        };
+        tbody.appendChild(tr);
       }
-    });
-
-    // selection storage
-    function loadSelections() {
-      try {
-        const s = localStorage.getItem('ftp_selections');
-        return s ? JSON.parse(s) : [];
-      } catch (e) { return []; }
-    }
-    function persistSelections() {
-      try { localStorage.setItem('ftp_selections', JSON.stringify(selectedRows)); } catch(e) {}
     }
 
-    function toggleSelectRow(row) {
-      if (!row) return;
-      const idx = selectedRows.findIndex(r => r.__originalIndex === row.__originalIndex);
-      if (idx >= 0) {
-        selectedRows.splice(idx,1);
-      } else {
-        selectedRows.push(row);
-      }
-      persistSelections();
+    // Modal: show details for a row
+    function showModalByIdx(idx){
+      const r = allRows.find(rr=>rr.__idx===idx);
+      if(!r) return;
+      document.getElementById('modalTitle').textContent = `${r.__home || ''} vs ${r.__away || ''} — ${r.__matchDate || ''}`;
+      const linkEl = document.getElementById('matchLink');
+      if(r.__link){
+        linkEl.href = r.__link;
+        linkEl.style.display = 'inline-block';
+      } else linkEl.style.display = 'none';
+
+      const modalBody = document.getElementById('modalBody');
+      modalBody.innerHTML = `
+        <div>
+          <h4>Home Stats</h4>
+          <ul class="stat-list">
+            <li><strong>Form:</strong> ${escapeHtml(col(r,["Home Form","Home_Form"])||"")}</li>
+            <li><strong>Home Wins (count):</strong> ${escapeHtml(r.__homeWins||0)}</li>
+            <li><strong>H2H Home Wins:</strong> ${escapeHtml(col(r,["H2H Home Wins","H2H_Home_Wins"])||"")}</li>
+            <li><strong>Table Pos:</strong> ${escapeHtml(col(r,["Home Table Pos","Home_Table_Pos"])||"")}</li>
+            <li><strong>Avg Goals Scored:</strong> ${escapeHtml(r.__homeAvgGoalsScored||"")}</li>
+            <li><strong>Avg Goals Conceded:</strong> ${escapeHtml(r.__homeAvgGoalsConceded||"")}</li>
+            <li><strong>Avg Time 1st Goal Scored:</strong> ${escapeHtml(col(r,["Home Avg Time 1st Goal Scored","Home_Avg_Time_1st_Goal_Scored"])||"")}</li>
+            <li><strong>Avg Yellow Cards:</strong> ${escapeHtml(col(r,["Home Avg Yellow Cards","Home_Avg_Yellow_Cards"])||"")}</li>
+            <li><strong>Avg Red Cards:</strong> ${escapeHtml(col(r,["Home Avg Red Cards","Home_Avg_Red_Cards"])||"")}</li>
+            <li><strong>Avg Subs Used:</strong> ${escapeHtml(col(r,["Home Avg Subs Used","Home_Avg_Subs_Used"])||"")}</li>
+            <li><strong>Biggest Victory:</strong> ${escapeHtml(col(r,["Home Biggest Victory","Home_Biggest_Victory"])||"")}</li>
+            <li><strong>Biggest Defeat:</strong> ${escapeHtml(col(r,["Home Biggest Defeat","Home_Biggest_Defeat"])||"")}</li>
+          </ul>
+        </div>
+        <div>
+          <h4>Away Stats</h4>
+          <ul class="stat-list">
+            <li><strong>Form:</strong> ${escapeHtml(col(r,["Away Form","Away_Form"])||"")}</li>
+            <li><strong>Away Wins (count):</strong> ${escapeHtml(r.__awayWins||0)}</li>
+            <li><strong>H2H Away Wins:</strong> ${escapeHtml(col(r,["H2H Away Wins","H2H_Away_Wins"])||"")}</li>
+            <li><strong>H2H Draws:</strong> ${escapeHtml(col(r,["H2H Draws","H2H_Draws"])||"")}</li>
+            <li><strong>Table Pos:</strong> ${escapeHtml(col(r,["Away Table Pos","Away_Table_Pos"])||"")}</li>
+            <li><strong>Avg Goals Scored:</strong> ${escapeHtml(col(r,["Away Avg Goals Scored","Away_Avg_Goals_Scored"])||"")}</li>
+            <li><strong>Avg Goals Conceded:</strong> ${escapeHtml(col(r,["Away Avg Goals Conceded","Away_Avg_Goals_Conceded"])||"")}</li>
+            <li><strong>Avg Time 1st Goal Scored:</strong> ${escapeHtml(r.__awayAvgTime1stScored||"")}</li>
+            <li><strong>Avg Yellow Cards:</strong> ${escapeHtml(col(r,["Away Avg Yellow Cards","Away_Avg_Yellow_Cards"])||"")}</li>
+            <li><strong>Avg Red Cards:</strong> ${escapeHtml(col(r,["Away Avg Red Cards","Away_Avg_Red_Cards"])||"")}</li>
+            <li><strong>Avg Subs Used:</strong> ${escapeHtml(col(r,["Away Avg Subs Used","Away_Avg_Subs_Used"])||"")}</li>
+            <li><strong>Biggest Victory:</strong> ${escapeHtml(col(r,["Away Biggest Victory","Away_Biggest_Victory"])||"")}</li>
+          </ul>
+        </div>
+      `;
+      document.getElementById('modalRoot').style.display = 'flex';
+      document.getElementById('closeModal').onclick = ()=> { document.getElementById('modalRoot').style.display = 'none'; };
     }
 
-    function renderSelectionsTable() {
-      if (!selectedRows || selectedRows.length === 0) {
-        selectionsBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-500">No selections yet</td></tr>';
+    // Save selected rows to provided Google Apps Script web app endpoint
+    async function saveSelectionsToGoogle(){
+      if(selections.length === 0){
+        alert("No selections to save.");
         return;
       }
-      selectionsBody.innerHTML = selectedRows.map(r => {
-        const pred = r.PredictionLabel || '';
-        const predTag = pred === 'Home' ? `<span class="pred-home">${pred}</span>` : pred === 'Draw' ? `<span class="pred-draw">${pred}</span>` : pred === 'Away' ? `<span class="pred-away">${pred}</span>` : '';
-        const rowClass = (pred && parseResultLabel(r['Match Result']) && pred === parseResultLabel(r['Match Result'])) ? 'green-row' : (pred && parseResultLabel(r['Match Result']) && pred !== parseResultLabel(r['Match Result'])) ? 'red-row' : '';
-        return `
-          <tr class="${rowClass}">
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Date']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Home Team']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Away Team']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Box Correct Score']||'')}</td>
-            <td class="px-4 py-3 text-sm">${escapeHtml(r['Match Result']||'')}</td>
-            <td class="px-4 py-3 text-sm">${predTag}</td>
-          </tr>
-        `;
-      }).join('');
+      // Build payload in the shape your Apps Script expects.
+      // Common pattern: an object with rows: [{...}, ...]
+      const payload = {
+        rows: selections.map(r => ({
+          matchDate: r.__matchDate || "",
+          homeTeam: r.__home || "",
+          awayTeam: r.__away || "",
+          boxCorrectScore: r.__box || "",
+          result: r.__result || "",
+          prediction: r.__prediction || "",
+          link: r.__link || ""
+        }))
+      };
+
+      // try POSTing JSON
+      try{
+        document.getElementById('saveToGoogle').disabled = true;
+        const resp = await fetch(SAVE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        // If the script returns JSON, parse it
+        let json;
+        try { json = await resp.json(); } catch(e) { json = null; }
+        if(resp.ok){
+          // Success — show message returned (if any)
+          const msg = json && (json.success || json.message) ? (json.success || json.message) : 'Saved successfully to Google Sheets.';
+          alert(msg);
+          // Optionally clear selections after successful save:
+          // selections = []; renderSelectionsTable(); renderTable();
+        } else {
+          throw new Error((json && json.error) ? json.error : `Response ${resp.status}`);
+        }
+      }catch(err){
+        // Often CORS or network failure — fall back to download CSV and inform the user.
+        alert("Could not save directly to the web app (CORS or network). Downloading CSV as fallback.\n\nDetails: " + err.message);
+        downloadSelectionsCsv();
+      } finally {
+        document.getElementById('saveToGoogle').disabled = false;
+      }
     }
 
-    downloadSelections.addEventListener('click', () => {
-      if (!selectedRows || selectedRows.length === 0) { alert('No selections to download'); return; }
-      // Build CSV
-      const headers = Object.keys(selectedRows[0]).filter(k => !k.startsWith('__'));
-      const lines = [headers.join(',')];
-      for (const r of selectedRows) {
-        const row = headers.map(h => `"${(''+(r[h]||'')).replace(/"/g,'""')}"`);
-        lines.push(row.join(','));
+    // Download selections as CSV (fallback)
+    function downloadSelectionsCsv(){
+      if(selections.length === 0){ alert("No selections to download."); return; }
+      const headers = ["matchDate","homeTeam","awayTeam","boxCorrectScore","result","prediction","link"];
+      const lines = [headers.join(",")];
+      for(const r of selections){
+        const row = [
+          r.__matchDate || "",
+          r.__home || "",
+          r.__away || "",
+          r.__box || "",
+          r.__result || "",
+          r.__prediction || "",
+          r.__link || ""
+        ].map(v => `"${String(v).replace(/\"/g,'""')}"`).join(",");
+        lines.push(row);
       }
-      const blob = new Blob([lines.join('\\n')], { type: 'text/csv' });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ftp_selections.csv';
+      a.download = "ftp_selections.csv";
       a.click();
       URL.revokeObjectURL(url);
-    });
+    }
 
-    clearSelectionsBtn.addEventListener('click', () => {
-      if (!confirm('Clear all selections?')) return;
-      selectedRows = [];
-      persistSelections();
-      renderSelectionsTable();
-      applyFiltersAndRender();
-    });
+    // UI wiring for selection panel & buttons
+    document.getElementById('viewSelectionsBtn').onclick = () => {
+      const panel = document.getElementById('selectionsPanel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if(panel.style.display === 'block') renderSelectionsTable();
+    };
+    document.getElementById('downloadCsv').onclick = downloadSelectionsCsv;
+    document.getElementById('saveToGoogle').onclick = saveSelectionsToGoogle;
+    document.getElementById('clearSelections').onclick = ()=> { if(confirm('Clear all selections?')) { selections = []; renderSelectionsTable(); renderTable(); } };
+    document.getElementById('refreshBtn').onclick = ()=> loadSheet();
 
-    // Attempt to save to published CSV URL (will usually fail due to CORS/read-only)
-    saveSelections.addEventListener('click', async () => {
-      if (!selectedRows || selectedRows.length === 0) { alert('No selections to save'); return; }
-      try {
-        // WARNING: published CSV endpoints are read-only; this will probably fail.
-        const payload = JSON.stringify({ rows: selectedRows });
-        const res = await fetch(FTP_SAVE_CSV_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: payload });
-        if (!res.ok) throw new Error('Save failed: ' + res.status);
-        alert('Saved successfully. Verify your sheet. (Note: published CSVs usually are read-only — server-side scripts are recommended.)');
-      } catch (err) {
-        alert('Unable to save directly to the published Google Sheets CSV (CORS / read-only).\\nFallback: the selections will be downloaded to your device as CSV.\\nIf you want server-side saving, create a Google Apps Script Web App or a writable endpoint and I can provide the code/instructions.');
-        // fallback: download
-        downloadSelections.click();
-      }
-    });
+    // Persist selections in localStorage to preserve across reloads
+    function loadSelectionsFromStorage(){
+      try{
+        const s = JSON.parse(localStorage.getItem('ftp_selections_v1')||'[]');
+        // s may be minimal; map __idx back to full row if available after sheet loads
+        selections = s.filter(si => typeof si.__idx === 'number').map(si => {
+          // attempt to match full row in allRows by __idx (after load)
+          const found = allRows.find(r => r.__idx === si.__idx);
+          return found || si; // if not found yet, keep the raw item (will be updated on load)
+        });
+      }catch(e){ selections = []; }
+    }
+    function persistSelectionsToStorage(){
+      try{
+        const toStore = selections.map(s => ({ __idx: s.__idx, matchDate: s.__matchDate, home: s.__home, away: s.__away }));
+        localStorage.setItem('ftp_selections_v1', JSON.stringify(toStore));
+      }catch(e){}
+    }
+    // persist when changes occur (observe manually after actions)
+    const origToggleSelectByIdx = toggleSelectByIdx; // not defined yet at parse time — we'll rewire: use events instead
 
-    // Modal handling
-    function openModalForRow(row) {
-      currentViewedRow = row;
-      modalTitle.textContent = `${row['Home Team'] || ''} vs ${row['Away Team'] || ''} — ${row['Match Date'] || ''}`;
-      // Home list
-      const homeItems = [
-        ['Home Form', row['Home Form'] || row['Home_Form'] || ''],
-        ['Home Wins', row['Home Wins'] || row['Home_Wins'] || row['HomeWins'] || ''],
-        ['H2H Home Wins', row['H2H Home Wins'] || row['H2H_Home_Wins'] || ''],
-        ['Home Table Pos', row['Home Table Pos'] || row['Home_Table_Pos'] || ''],
-        ['Home Avg Goals Scored', row['Home Avg Goals Scored'] || row['Home_Avg_Goals_Scored'] || ''],
-        ['Home Avg Goals Conceded', row['Home Avg Goals Conceded'] || row['Home_Avg_Goals_Conceded'] || ''],
-        ['Home Avg Time 1st Goal Scored', row['Home Avg Time 1st Goal Scored'] || row['Home_Avg_Time_1st_Goal_Scored'] || ''],
-        ['Home Avg Yellow Cards', row['Home Avg Yellow Cards'] || row['Home_Avg_Yellow_Cards'] || ''],
-        ['Home Avg Red Cards', row['Home Avg Red Cards'] || row['Home_Avg_Red_Cards'] || ''],
-        ['Home Avg Subs Used', row['Home Avg Subs Used'] || row['Home_Avg_Subs_Used'] || ''],
-        ['Home Biggest Victory', row['Home Biggest Victory'] || row['Home_Biggest_Victory'] || ''],
-        ['Home Biggest Defeat', row['Home Biggest Defeat'] || row['Home_Biggest_Defeat'] || ''],
-      ];
-      modalHomeList.innerHTML = homeItems.map(h => `<li><strong>${h[0]}:</strong> ${escapeHtml(h[1]||'')}</li>`).join('');
+    // Because functions are declared below, we call loadSelectionsFromStorage now and re-apply after loading sheet.
+    loadSelectionsFromStorage();
 
-      // Away list
-      const awayItems = [
-        ['Away Form', row['Away Form'] || row['Away_Form'] || ''],
-        ['Away Wins', row['Away Wins'] || row['Away_Wins'] || row['AwayWins'] || ''],
-        ['H2H Away Wins', row['H2H Away Wins'] || row['H2H_Away_Wins'] || ''],
-        ['H2H Draws', row['H2H Draws'] || row['H2H_Draws'] || ''],
-        ['Away Table Pos', row['Away Table Pos'] || row['Away_Table_Pos'] || ''],
-        ['Away Avg Goals Scored', row['Away Avg Goals Scored'] || row['Away_Avg_Goals_Scored'] || ''],
-        ['Away Avg Goals Conceded', row['Away Avg Goals Conceded'] || row['Away_Avg_Goals_Conceded'] || ''],
-        ['Away Avg Time 1st Goal Scored', row['Away Avg Time 1st Goal Scored'] || row['Away_Avg_Time_1st_Goal_Scored'] || ''],
-        ['Away Avg Yellow Cards', row['Away Avg Yellow Cards'] || row['Away_Avg_Yellow_Cards'] || ''],
-        ['Away Avg Red Cards', row['Away Avg Red Cards'] || row['Away_Avg_Red_Cards'] || ''],
-        ['Away Avg Subs Used', row['Away Avg Subs Used'] || row['Away_Avg_Subs_Used'] || ''],
-        ['Away Biggest Victory', row['Away Biggest Victory'] || row['Away_Biggest_Victory'] || ''],
-        ['Away Biggest Defeat', row['Away Biggest Defeat'] || row['Away_Biggest_Defeat'] || ''],
-      ];
-      modalAwayList.innerHTML = awayItems.map(h => `<li><strong>${h[0]}:</strong> ${escapeHtml(h[1]||'')}</li>`).join('');
-
-      // link
-      if (row['Match Link']) {
-        modalMatchLink.href = row['Match Link'];
-        modalMatchLink.classList.remove('hidden');
+    // Expose some internal helpers used earlier (re-declare to ensure hoisting)
+    window.toggleSelectByIdx = function(idx){ // ensure global for closure usage above
+      const row = allRows.find(r=>r.__idx===idx);
+      if(!row) return;
+      if(isSelected(row)){
+        selections = selections.filter(s=>s.__idx!==idx);
       } else {
-        modalMatchLink.classList.add('hidden');
+        selections.push(row);
       }
+      renderTable();
+      renderSelectionsTable();
+      persistSelectionsToStorage();
+    };
 
-      modalRoot.classList.remove('hidden');
-      modalRoot.style.display = 'flex';
-      // set select in modal
-      modalSelectBtn.onclick = () => {
-        toggleSelectRow(currentViewedRow);
-        persistSelections();
-        renderSelectionsTable();
-        applyFiltersAndRender();
-        closeModal();
-      };
-    }
-    function closeModal() {
-      modalRoot.classList.add('hidden');
-      modalRoot.style.display = 'none';
-      currentViewedRow = null;
-    }
+    // on startup, load sheet
+    loadSheet();
 
-    // small utility: escape for html (used above already)
-    // function escapeHtml(s) { ... } - defined earlier
+    // Save selections to storage before unload
+    window.addEventListener('beforeunload', ()=> { persistSelectionsToStorage(); });
 
-    // initial fetch
-    fetchCsvAndRender();
-
-    // render selections initial
-    renderSelectionsTable();
-
-    // refresh button
-    refreshBtn.addEventListener('click', () => fetchCsvAndRender());
-
-    // expose closeModal globally for backdrop onclick
-    window.closeModal = closeModal;
-
-    // helper to open selections tab directly (optional)
-    document.getElementById('toggleSelectionsBtn').addEventListener('click', () => {
-      // handled above, but keep safe
+    // Provide convenience: toggle selection by clicking row's Select button (delegation)
+    document.addEventListener('click', function(evt){
+      // handled per-button already; nothing else needed here
     });
-
-    // initialize empty UI states if needed (counts)
-    cardTotal.textContent = '0';
-    cardWon.textContent = '0';
-    cardPct.textContent = '0%';
+  })();
   </script>
-
 </body>
 </html>
