@@ -1,1147 +1,979 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Comparison Dashboard</title>
-    <!-- 1. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. Inter Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- 3. Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FTP.NET — Comparison</title>
 
-    <style>
-        /* Custom styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Lighter gray background */
-        }
-        /* Custom scrollbar for table container */
-        .table-container::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .table-container::-webkit-scrollbar-thumb {
-            background-color: #a0aec0;
-            border-radius: 3px;
-        }
-        .table-container::-webkit-scrollbar-track {
-            background-color: #edf2f7;
-            border-radius: 3px;
-        }
-        
-        /* Modal backdrop */
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease-in-out;
-        }
-        
-        /* Modal content */
-        .modal-content {
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-            max-height: 90vh;
-        }
+  <!-- Font Awesome for icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
-        /* Loading spinner */
-        .loader {
-            border-top-color: #3498db;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 
-        /* Tooltip */
-        [data-tooltip] {
-            position: relative;
-        }
-        [data-tooltip]:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 125%; /* Position above the element */
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #2d3748; /* Dark gray */
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            z-index: 50;
-            opacity: 1;
-            transition: opacity 0.2s;
-        }
-    </style>
+  <style>
+    :root{
+      --royal-blue: #005AE0;
+      --emerald: #00C16A;
+      --white: #FFFFFF;
+      --jet: #111111;
+      --signal-red: #FF3B30;
+      --soft-green: #E9FFF4;
+      --soft-red: #FFECEC;
+      --ice-blue: #E8F2FF;
+      --gold: #FFD93D;
+
+      --card-radius: 14px;
+      --shadow-sm: 0 4px 18px rgba(17,17,17,0.06);
+      --shadow-md: 0 10px 30px rgba(17,17,17,0.08);
+      --glass: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,255,0.85));
+    }
+
+    /* dark mode root override */
+    .dark {
+      --white: #0b0b0c;
+      --jet: #f2f2f2;
+      --glass: linear-gradient(180deg, rgba(16,16,16,0.9), rgba(10,10,12,0.85));
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,#FBFDFF 0%, #F5F9FF 100%);
+      color:var(--jet);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    header.appbar{
+      display:flex;
+      align-items:center;
+      gap:18px;
+      padding:20px 28px;
+      border-bottom:1px solid rgba(17,17,17,0.04);
+      background:transparent;
+      position:sticky;
+      top:0;
+      z-index:30;
+      backdrop-filter: blur(6px);
+    }
+
+    .brand {
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .brand-logo{
+      width:44px;height:44px;border-radius:10px;
+      background:linear-gradient(135deg,var(--royal-blue), #3b7cff);
+      display:grid;place-items:center;color:white;font-weight:800;
+      box-shadow:var(--shadow-sm);
+    }
+    h1.title{font-size:18px;margin:0;font-weight:700;letter-spacing:0.2px}
+    p.subtitle{margin:0;font-size:12px;color:rgba(17,17,17,0.55)}
+
+
+    main.wrapper{padding:22px 28px; max-width:1200px;margin:24px auto 80px;}
+
+    /* filter bar */
+    .filters {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+    }
+    .filter, .search {
+      background:var(--white);
+      border-radius:12px;
+      padding:8px 12px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      box-shadow:var(--shadow-sm);
+      border:1px solid rgba(17,17,17,0.03);
+    }
+    .filter select, .search input {
+      border:none;
+      outline:none;
+      font-size:14px;
+      background:transparent;
+      width:220px;
+    }
+    .limit-select{min-width:120px}
+
+    /* summary cards */
+    .cards {display:grid;grid-template-columns:repeat(3,1fr); gap:14px;margin-bottom:20px;}
+    .card{
+      background:var(--white);
+      border-radius:var(--card-radius);
+      padding:16px;
+      box-shadow:var(--shadow-md);
+      display:flex;
+      align-items:center;
+      gap:14px;
+      transition:transform .32s ease;
+    }
+    .card:hover{transform:translateY(-6px)}
+    .card .icon {
+      width:56px;height:56px;border-radius:12px;display:grid;place-items:center;color:white;font-size:20px;
+      box-shadow:0 8px 20px rgba(5,20,60,0.08);
+      flex-shrink:0;
+    }
+    .card .meta{font-size:12px;color:rgba(17,17,17,0.55)}
+    .card .num{font-size:22px;font-weight:700}
+
+    /* gradients */
+    .g-blue{background:linear-gradient(135deg,#005AE0 0%, #2D79FF 100%)}
+    .g-green{background:linear-gradient(135deg,#00C16A 0%, #00E081 100%)}
+    .g-gold{background:linear-gradient(135deg,#FFD93D 0%, #FFCC00 100%); color: #111;}
+
+    /* table */
+    .table-card{background:var(--white); border-radius:16px; padding:12px; box-shadow:var(--shadow-md);}
+    table.match-table{width:100%; border-collapse:collapse; font-size:13px;}
+    table thead th{ text-align:left; padding:10px 12px; font-weight:600; color:rgba(17,17,17,0.7); font-size:12px; border-bottom:1px solid rgba(17,17,17,0.06);}
+    table tbody td{ padding:10px 12px; border-bottom:1px solid rgba(17,17,17,0.03); vertical-align:middle;}
+    tr.row-correct{ background: linear-gradient(90deg, rgba(0,193,106,0.06), rgba(233,255,244,0.6)); }
+    tr.row-wrong{ background: linear-gradient(90deg, rgba(255,59,48,0.05), rgba(255,236,236,0.85)); }
+    tr.row-neutral{ background:transparent; }
+    tr:hover td{ background:rgba(0,0,0,0.01); transform:translateY(0);}
+
+    .pill { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
+    .pill.pred-home{ background: linear-gradient(90deg,#e8f2ff, #dfeeff); color:var(--royal-blue) }
+    .pill.pred-away{ background: linear-gradient(90deg,#fff6f6, #ffecec); color:var(--signal-red) }
+    .pill.pred-draw{ background: linear-gradient(90deg,#f7f7f8,#f1f1f2); color: #555 }
+
+    .actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; margin-bottom:12px}
+    .btn { background:var(--royal-blue); color:white; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; display:inline-flex; gap:8px; align-items:center; }
+    .btn.secondary { background:transparent; color:var(--royal-blue); border:1px solid rgba(0,90,224,0.12) }
+    .btn.ghost { background:transparent; color:var(--jet); border:1px dashed rgba(17,17,17,0.06) }
+
+    /* view/select icons */
+    .icon-btn { background:transparent; border:none; cursor:pointer; padding:8px; border-radius:10px; }
+    .icon-btn:hover{ background:rgba(0,90,224,0.04) }
+
+    /* modal */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(3,6,18,0.36); display:grid; place-items:center; z-index:80; opacity:0; pointer-events:none; transition:opacity .22s ease;}
+    .modal-backdrop.open{ opacity:1; pointer-events:auto; }
+    .modal {
+      width:min(920px,95%); background:var(--white); border-radius:16px; overflow:hidden; box-shadow:0 30px 80px rgba(11,18,55,0.35);
+      transform: translateY(24px) scale(.98);
+      transition:transform .26s cubic-bezier(.2,.9,.2,1), opacity .26s;
+      opacity:0;
+    }
+    .modal-backdrop.open .modal{ transform:translateY(0) scale(1); opacity:1; }
+    .modal .modal-header { padding:18px 20px; display:flex; justify-content:space-between; align-items:center; gap:12px; background:linear-gradient(90deg,var(--royal-blue), #2D79FF); color:white; }
+    .modal .modal-body{ padding:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; color:var(--jet); background:var(--white) }
+    .modal .field { background: #f7f9ff; padding:10px;border-radius:10px; font-size:13px; }
+    .modal .field h4{ margin:0 0 6px 0; font-size:12px; color:rgba(17,17,17,0.6); }
+    .modal .field p{ margin:0; font-weight:600; font-size:14px; color:var(--jet) }
+
+    /* selections area */
+    .selections {
+      margin-top:18px;
+      background:linear-gradient(180deg,#FFFFFF,#FBFDFF);
+      padding:14px;border-radius:14px; box-shadow:var(--shadow-sm);
+    }
+
+    /* floating back button */
+    .floating-back {
+      position:fixed; right:22px; bottom:22px; z-index:90;
+    }
+    .floating-back a{
+      width:56px;height:56px;border-radius:999px;display:grid;place-items:center;background:var(--royal-blue);color:white;box-shadow:0 12px 30px rgba(0,90,224,0.18);
+      transition:transform .18s, box-shadow .18s;
+    }
+    .floating-back a:hover{ transform:translateY(-6px); box-shadow:0 20px 40px rgba(0,90,224,0.28); }
+
+    /* small utilities */
+    .muted{ color: rgba(17,17,17,0.45); font-size:13px; }
+    .space { height:16px; }
+
+    /* responsive */
+    @media (max-width:980px){
+      .cards{ grid-template-columns:repeat(1,1fr); }
+      .modal .modal-body{ grid-template-columns:repeat(1,1fr); }
+      .filter select{ width:160px; }
+    }
+
+    /* toast */
+    .toast {
+      position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:120;
+      padding:12px 16px; border-radius:12px; color:white; font-weight:700; box-shadow:0 12px 30px rgba(0,0,0,0.18); display:none;
+    }
+    .toast.show { display:block; animation:toastIn .26s ease; }
+    @keyframes toastIn {
+      from { transform:translateX(-50%) translateY(16px); opacity:0 }
+      to { transform:translateX(-50%) translateY(0); opacity:1 }
+    }
+
+    /* small utility styles */
+    .small { font-size:12px; color:rgba(17,17,17,0.6); }
+    .chip { padding:6px 8px; border-radius:999px; background:rgba(17,17,17,0.04); font-size:12px;}
+  </style>
 </head>
-<body class="antialiased text-gray-800">
-
-    <!-- App Container -->
-    <div class="min-h-screen">
-
-        <!-- SIMULATED SITE HEADER & TABS -->
-        <header class="bg-white shadow-md sticky top-0 z-40">
-            <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
-                    <div class="flex items-center">
-                        <span class="text-2xl font-bold text-blue-600 flex items-center">
-                            <i data-lucide="bar-chart-3" class="mr-2"></i>
-                            StatsDashboard
-                        </span>
-                    </div>
-                    <div class="flex space-x-4">
-                        <a href="#" class="px-3 py-2 text-gray-500 font-medium rounded-md hover:text-blue-600">Home</a>
-                        <a href="#" class="px-3 py-2 text-blue-600 font-semibold border-b-2 border-blue-600" aria-current="page">Comparison</a>
-                        <a href="#" class="px-3 py-2 text-gray-500 font-medium rounded-md hover:text-blue-600">Analytics</a>
-                    </div>
-                </div>
-            </nav>
-        </header>
-
-        <!-- MAIN CONTENT AREA (Comparison Tab) -->
-        <main class="container mx-auto p-4 sm:p-6 lg:p-8">
-            
-            <!-- Loading Spinner Overlay -->
-            <div id="loading-overlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-                <div class="loader w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full"></div>
-            </div>
-
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-                <h1 class="text-3xl font-bold text-gray-900">Comparison Dashboard</h1>
-                <div id="last-refreshed" class="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm">
-                    <!-- Last refreshed: Populated by JS -->
-                </div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
-                <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100" data-tooltip="Total number of matches in the current view">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-500">Total Matches</h3>
-                        <i data-lucide="hash" class="w-5 h-5 text-gray-400"></i>
-                    </div>
-                    <p id="card-total-matches" class="text-3xl font-semibold text-gray-900 mt-2">0</p>
-                </div>
-                
-                <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100" data-tooltip="Win rate based on 'Prediction' column">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-500">"Prediction" Wins</h3>
-                        <i data-lucide="target" class="w-5 h-5 text-blue-500"></i>
-                    </div>
-                    <p id="card-prediction-wins" class="text-3xl font-semibold text-blue-600 mt-2">0 (0%)</p>
-                </div>
-                
-                <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100" data-tooltip="Win rate based on 'Predicted Outcome' column">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-500">"Predicted Outcome" Wins</h3>
-                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-green-500"></i>
-                    </div>
-                    <p id="card-outcome-wins" class="text-3xl font-semibold text-green-600 mt-2">0 (0%)</p>
-                </div>
-
-                <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100" data-tooltip="Win rate based on 'Expected Outcome' column">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-500">"Expected Outcome" Wins</h3>
-                        <i data-lucide="pie-chart" class="w-5 h-5 text-yellow-500"></i>
-                    </div>
-                    <p id="card-expected-wins" class="text-3xl font-semibold text-yellow-600 mt-2">0 (0%)</p>
-                </div>
-
-                <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100" data-tooltip="Win rate based on 'Match Forecast' column">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-medium text-gray-500">"Match Forecast" Wins</h3>
-                        <i data-lucide="zap" class="w-5 h-5 text-purple-500"></i>
-                    </div>
-                    <p id="card-forecast-wins" class="text-3xl font-semibold text-purple-600 mt-2">0 (0%)</p>
-                </div>
-            </div>
-
-            <!-- Sub-tabs and Main Controls -->
-            <div class="bg-white p-4 rounded-xl shadow-lg mb-6 border border-gray-100">
-                <!-- Sub-tabs -->
-                <div class="flex border-b border-gray-200 mb-4">
-                    <button id="tab-btn-comparison" data-tab="comparison" class="tab-btn -mb-px px-4 py-3 font-semibold text-blue-600 border-b-2 border-blue-600">
-                        All Matches
-                    </button>
-                    <button id="tab-btn-superselections" data-tab="superselections" class="tab-btn px-4 py-3 font-medium text-gray-500 hover:text-blue-600">
-                        <i data-lucide="star" class="w-4 h-4 inline-block mr-1 text-yellow-500"></i>
-                        Super Selections
-                    </button>
-                </div>
-
-                <!-- Filters & Search -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3 mb-4">
-                    <!-- Search -->
-                    <div class="relative lg:col-span-2">
-                        <input type="text" id="search-team" placeholder="Search by team name..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
-                    </div>
-
-                    <!-- Main Filters -->
-                    <select id="filter-date" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Dates</option>
-                    </select>
-                    <select id="filter-league" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Leagues</option>
-                    </select>
-                    <select id="filter-prediction" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Predictions</option>
-                    </select>
-                    <select id="filter-predicted-outcome" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Predicted Outcomes</option>
-                    </select>
-                    <select id="filter-expected-outcome" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Expected Outcomes</option>
-                    </select>
-                    <select id="filter-match-forecast" class="filter-select w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden lg:block">
-                        <option value="">All Match Forecasts</option>
-                    </select>
-                </div>
-
-                <!-- More Filters & Export -->
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
-                    <button id="open-advanced-filters" class="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center">
-                        <i data-lucide="sliders-horizontal" class="w-4 h-4 mr-2"></i>
-                        More Filters
-                    </button>
-                    <div class="flex gap-2">
-                        <button id="export-csv" class="w-full sm:w-auto px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center" data-tooltip="Export current view to CSV">
-                            <i data-lucide="file-down" class="w-4 h-4 mr-2"></i>
-                            Export CSV
-                        </button>
-                        <button class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center opacity-50 cursor-not-allowed" data-tooltip="PDF Export (Coming Soon)">
-                            <i data-lucide="file-type" class="w-4 h-4 mr-2"></i>
-                            Export PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Table -->
-            <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-                <div class="table-container overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">View</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Home Team</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Away Team</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Home Odds</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Draw Odds</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Away Odds</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Correct Score</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Prediction</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Predicted Outcome</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Expected Outcome</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Match Forecast</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Match Result</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="bg-white divide-y divide-gray-200">
-                            <!-- Rows will be injected by JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Empty State -->
-                <div id="empty-state" class="hidden text-center p-12">
-                    <i data-lucide="database-zap" class="w-16 h-16 mx-auto text-gray-400"></i>
-                    <h3 class="mt-2 text-xl font-semibold text-gray-900">No Data Available</h3>
-                    <p class="mt-1 text-sm text-gray-500">No matches found for the selected filters. Try adjusting your search.</p>
-                </div>
-
-                <!-- Pagination -->
-                <nav class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                    <div class="flex-1 flex justify-between sm:hidden">
-                        <button id="prev-page-mobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
-                            Previous
-                        </button>
-                        <button id="next-page-mobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
-                            Next
-                        </button>
-                    </div>
-                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-sm text-gray-700">
-                                Showing
-                                <span id="page-start-index" class="font-medium">1</span>
-                                to
-                                <span id="page-end-index" class="font-medium">10</span>
-                                of
-                                <span id="total-items" class="font-medium">0</span>
-                                results
-                            </p>
-                        </div>
-                        <div>
-                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                                <button id="prev-page" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50">
-                                    <span class="sr-only">Previous</span>
-                                    <i data-lucide="chevron-left" class="h-5 w-5"></i>
-                                </button>
-                                <span id="page-info" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                                    Page 1 of 1
-                                </span>
-                                <button id="next-page" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50">
-                                    <span class="sr-only">Next</span>
-                                    <i data-lucide="chevron-right" class="h-5 w-5"></i>
-                                </button>
-                            </nav>
-                        </div>
-                    </div>
-                </nav>
-            </div>
-        </main>
+<body>
+  <header class="appbar">
+    <div class="brand">
+      <div class="brand-logo">FTP</div>
+      <div>
+        <h1 class="title">FTP.NET — Comparison</h1>
+        <p class="subtitle">Interactive match predictions dashboard</p>
+      </div>
     </div>
 
-    <!-- Advanced Filters Modal -->
-    <div id="advanced-filter-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden opacity-0">
-        <div class="modal-content bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 sm:p-8 opacity-0 transform scale-95 overflow-y-auto">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                    <i data-lucide="sliders-horizontal" class="mr-3 text-blue-600"></i>
-                    Advanced Filters
-                </h2>
-                <button id="close-advanced-filters" class="text-gray-400 hover:text-gray-600">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                <!-- Range Filters -->
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Home Odds</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-home-odds-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-home-odds-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Draw Odds</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-draw-odds-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-draw-odds-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Away Odds</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-away-odds-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-away-odds-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Confidence %</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-confidence-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-confidence-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Home Team Power</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-home-power-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-home-power-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Away Team Power</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-away-power-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-away-power-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Predicted Probability %</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-pred-prob-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-pred-prob-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Probability Rate</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-prob-rate-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-prob-rate-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="range-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Forecast Probability</label>
-                    <div class="flex gap-2">
-                        <input type="number" id="filter-forecast-prob-min" placeholder="Min" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                        <input type="number" id="filter-forecast-prob-max" placeholder="Max" class="adv-filter-input w-1/2 p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-            </div>
+    <div style="flex:1"></div>
 
-            <div class="mt-8 flex justify-end gap-3">
-                <button id="clear-advanced-filters" class="px-5 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
-                    Clear All
-                </button>
-                <button id="apply-advanced-filters" class="px-5 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center">
-                    <i data-lucide="check" class="w-5 h-5 mr-2"></i>
-                    Apply Filters
-                </button>
-            </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn ghost" id="toggleDarkBtn" title="Toggle dark mode">
+        <i class="fa-regular fa-moon"></i>&nbsp;<span class="small">Dark</span>
+      </button>
+      <button class="btn secondary" id="exportBtn" title="Export visible table CSV">
+        <i class="fa-solid fa-file-csv"></i>&nbsp;Export CSV
+      </button>
+    </div>
+  </header>
+
+  <main class="wrapper" id="app">
+    <!-- Filters -->
+    <div class="filters" role="region" aria-label="Filters">
+      <div class="filter">
+        <i class="fa-solid fa-calendar-days" style="color:var(--royal-blue)"></i>
+        <select id="dateFilter"><option value="all">All Dates</option></select>
+      </div>
+
+      <div class="search">
+        <i class="fa-solid fa-magnifying-glass" style="color:rgba(17,17,17,0.45)"></i>
+        <input id="teamSearch" placeholder="Search teams (home or away)..." />
+      </div>
+
+      <div class="filter limit-select">
+        <label class="small muted" style="margin-right:8px">Rows</label>
+        <select id="rowLimit">
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+
+      <div style="flex:1"></div>
+
+      <div class="filter" style="gap:10px">
+        <i class="fa-solid fa-link" style="color:rgba(17,17,17,0.5)"></i>
+        <input id="appsScriptUrl" placeholder="Paste Apps Script POST endpoint (optional)" style="width:320px;" />
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="cards" id="summaryCards">
+      <div class="card">
+        <div class="icon g-blue"><i class="fa-solid fa-calendar-days"></i></div>
+        <div>
+          <div class="meta">Total Matches</div>
+          <div class="num" id="totalMatches">0</div>
         </div>
-    </div>
+      </div>
 
-    <!-- Row Detail Modal -->
-    <div id="row-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden opacity-0">
-        <div class="modal-content bg-white w-full max-w-4xl rounded-2xl shadow-2xl p-6 sm:p-8 opacity-0 transform scale-95 overflow-y-auto">
-            <div class="flex justify-between items-center mb-6 pb-4 border-b">
-                <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                    <i data-lucide="presentation" class="mr-3 text-blue-600"></i>
-                    Match Details
-                </h2>
-                <button id="close-row-detail" class="text-gray-400 hover:text-gray-600">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-
-            <div id="row-detail-content" class="space-y-6">
-                <!-- Content injected by JS -->
-            </div>
+      <div class="card">
+        <div class="icon g-green"><i class="fa-solid fa-trophy"></i></div>
+        <div>
+          <div class="meta">Predictions Won</div>
+          <div class="num" id="predWins">0</div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="icon g-gold"><i class="fa-solid fa-chart-pie"></i></div>
+        <div>
+          <div class="meta">Win Rate</div>
+          <div class="num" id="winRate">0%</div>
+        </div>
+      </div>
     </div>
 
+    <!-- Actions -->
+    <div class="actions">
+      <div class="small muted">Loaded from Sheet CSV</div>
+      <div style="width:10px"></div>
+      <button class="btn" id="clearSelectionsBtn"><i class="fa-solid fa-xmark"></i> Clear Selections</button>
+      <button class="btn secondary" id="viewSelectionsBtn"><i class="fa-solid fa-folder-open"></i> FTP Selections</button>
+      <button class="btn" id="saveToBackBtn"><i class="fa-solid fa-upload"></i> Save Selections</button>
+    </div>
 
-    <script>
-        // --- MOCK DATA ---
-        // As the Google Sheet link was a placeholder, I'm using mock data to build all features.
-        // This array simulates the data fetched from the CSV.
-        /*
-         * MOCK_DATA constant removed. Data will now be fetched live.
-         */
+    <!-- Table -->
+    <div class="table-card">
+      <table class="match-table" id="matchTable" role="table" aria-label="Matches">
+        <thead>
+          <tr>
+            <th>Match Date</th>
+            <th>Home Team</th>
+            <th>Away Team</th>
+            <th>Box Correct Score</th>
+            <th>Home Avg Goals Scored</th>
+            <th>Home Avg Goals Conceded</th>
+            <th>Away Avg 1st Goal Scored</th>
+            <th>Away Avg 1st Goal Conceded</th>
+            <th>Match Result</th>
+            <th>Prediction</th>
+            <th style="text-align:right">View</th>
+            <th style="text-align:right">Select</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="12" class="muted" style="padding:22px;text-align:center">Loading matches…</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-        // --- APP STATE ---
-        let allData = [];
-        let filteredData = [];
-        let currentPage = 1;
-        const rowsPerPage = 20;
-        let currentTab = 'comparison'; // 'comparison' or 'superselections'
-        let filterValues = {
-            search: '',
-            date: '',
-            league: '',
-            prediction: '',
-            predictedOutcome: '',
-            expectedOutcome: '',
-            matchForecast: '',
-            adv: { // Advanced filters
-                homeOddsMin: '', homeOddsMax: '',
-                drawOddsMin: '', drawOddsMax: '',
-                awayOddsMin: '', awayOddsMax: '',
-                confidenceMin: '', confidenceMax: '',
-                homePowerMin: '', homePowerMax: '',
-                awayPowerMin: '', awayPowerMax: '',
-                predProbMin: '', predProbMax: '',
-                probRateMin: '', probRateMax: '',
-                forecastProbMin: '', forecastProbMax: '',
-            }
-        };
+    <div class="space"></div>
 
-        // --- DOM ELEMENTS ---
-        const $ = document.getElementById.bind(document);
-        const $q = document.querySelectorAll.bind(document);
-        
-        const loadingOverlay = $('loading-overlay');
-        const lastRefreshed = $('last-refreshed');
-        
-        // Cards
-        const cardTotalMatches = $('card-total-matches');
-        const cardPredictionWins = $('card-prediction-wins');
-        const cardOutcomeWins = $('card-outcome-wins');
-        const cardExpectedWins = $('card-expected-wins');
-        const cardForecastWins = $('card-forecast-wins');
+    <!-- Selections area (FTP Selections preview inside page) -->
+    <div class="selections" id="selectionsArea" hidden>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3 style="margin:0">FTP Selections</h3>
+          <p class="small muted" style="margin:6px 0 0 0">Selected matches (saved locally, and can be pushed to the Back sheet)</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="exportSelectionsBtn"><i class="fa-solid fa-file-export"></i> Export</button>
+          <button class="btn secondary" id="closeSelections"><i class="fa-solid fa-times"></i> Close</button>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div id="selectionsList" style="display:grid;gap:8px"></div>
+    </div>
+  </main>
 
-        // Tabs
-        const tabBtnComparison = $('tab-btn-comparison');
-        const tabBtnSuperSelections = $('tab-btn-superselections');
+  <!-- modal -->
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div>
+          <div id="modalTeams" style="font-weight:800;font-size:16px"></div>
+          <div id="modalDate" style="font-size:12px;opacity:0.9"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn secondary" id="modalOpenLink"><i class="fa-solid fa-link"></i> Open Link</button>
+          <button class="btn" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
 
-        // Filters
-        const searchInput = $('search-team');
-        const filterDate = $('filter-date');
-        const filterLeague = $('filter-league');
-        const filterPrediction = $('filter-prediction');
-        const filterPredictedOutcome = $('filter-predicted-outcome');
-        const filterExpectedOutcome = $('filter-expected-outcome');
-        const filterMatchForecast = $('filter-match-forecast');
+      <div class="modal-body" id="modalBody">
+        <!-- Fields injected dynamically -->
+      </div>
+    </div>
+  </div>
 
-        // Table & Pagination
-        const tableBody = $('table-body');
-        const emptyState = $('empty-state');
-        const prevPage = $('prev-page');
-        const nextPage = $('next-page');
-        const prevPageMobile = $('prev-page-mobile');
-        const nextPageMobile = $('next-page-mobile');
-        const pageInfo = $('page-info');
-        const pageStartIndex = $('page-start-index');
-        const pageEndIndex = $('page-end-index');
-        const totalItems = $('total-items');
+  <!-- floating back -->
+  <div class="floating-back">
+    <a href="https://datacompass360.github.io/forecast2.0/" title="Back to Forecast" id="backAnchor" target="_blank" rel="noopener">
+      <i class="fa-solid fa-arrow-left" style="font-size:18px"></i>
+    </a>
+  </div>
 
-        // Modals
-        const advancedFilterModal = $('advanced-filter-modal');
-        const openAdvancedFilters = $('open-advanced-filters');
-        const closeAdvancedFilters = $('close-advanced-filters');
-        const applyAdvancedFilters = $('apply-advanced-filters');
-        const clearAdvancedFilters = $('clear-advanced-filters');
+  <!-- toast -->
+  <div id="toast" class="toast"></div>
 
-        const rowDetailModal = $('row-detail-modal');
-        const closeRowDetail = $('close-row-detail');
-        const rowDetailContent = $('row-detail-content');
-        
-        // Export
-        const exportCsvBtn = $('export-csv');
+  <script>
+    /*************************************************************************
+     * FTP.NET — comparison.html
+     * Loads match CSV, provides filtering, analytics, modal details, selections,
+     * and saving to a Back sheet via an Apps Script POST endpoint (user-provided).
+     *
+     * Data source:
+     * MAIN CSV:
+     * https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv
+     *
+     * BACK CSV (read-only, used for duplicate checks):
+     * https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv
+     *
+     * To save selections to the Back sheet, deploy a Google Apps Script Web App
+     * that accepts POST JSON and writes rows. Paste that endpoint into the Apps Script input.
+     *
+     *************************************************************************/
 
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', () => {
-            initApp();
-            lucide.createIcons();
+    // CONFIG
+    const MAIN_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv';
+    const BACK_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv';
+    // Apps Script endpoint is provided by user in UI (appsScriptUrl input)
+    const appsScriptInput = document.getElementById('appsScriptUrl');
+
+    // app state
+    let rawData = [];       // array of objects from CSV
+    let filteredData = [];  // filtered view
+    let backCsvRows = [];   // rows fetched from Back CSV (for duplicate check)
+    let selections = JSON.parse(localStorage.getItem('ftp_selections_v1') || '[]'); // stored selected rows
+    const tableBody = document.getElementById('tableBody');
+
+    // UI elements
+    const dateFilter = document.getElementById('dateFilter');
+    const teamSearch = document.getElementById('teamSearch');
+    const rowLimit = document.getElementById('rowLimit');
+    const totalMatchesEl = document.getElementById('totalMatches');
+    const predWinsEl = document.getElementById('predWins');
+    const winRateEl = document.getElementById('winRate');
+    const toastEl = document.getElementById('toast');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalBody = document.getElementById('modalBody');
+    const modalTeams = document.getElementById('modalTeams');
+    const modalDate = document.getElementById('modalDate');
+    const modalOpenLink = document.getElementById('modalOpenLink');
+    const modalClose = document.getElementById('modalClose');
+
+    const selectionsArea = document.getElementById('selectionsArea');
+    const selectionsList = document.getElementById('selectionsList');
+    const viewSelectionsBtn = document.getElementById('viewSelectionsBtn');
+    const closeSelections = document.getElementById('closeSelections');
+    const clearSelectionsBtn = document.getElementById('clearSelectionsBtn');
+    const saveToBackBtn = document.getElementById('saveToBackBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportSelectionsBtn = document.getElementById('exportSelectionsBtn');
+
+    const dateFormat = (s) => s; // preserve format from CSV — user can parse differently if needed
+
+    // utility: parse CSV into array of objects (simple)
+    function parseCSV(text){
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if (!lines.length) return [];
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        // split but keep commas inside quotes safe
+        const cells = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+        const obj = {};
+        for (let i=0;i<headers.length;i++){
+          let v = cells[i] || '';
+          v = v.replace(/^"(.*)"$/, '$1'); // remove surrounding quotes
+          obj[headers[i]] = v;
+        }
+        return obj;
+      });
+      return rows;
+    }
+
+    // Load CSV helper
+    async function fetchCsv(url){
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Network error: ' + res.status);
+        const text = await res.text();
+        return parseCSV(text);
+      } catch (e) {
+        console.error('CSV fetch error', e);
+        showToast('Error loading CSV: ' + e.message, 'error');
+        return [];
+      }
+    }
+
+    // Prediction logic from "Box Correct Score" like "2-1" or "1:1"
+    function computePredictionFromBox(boxScore){
+      if (!boxScore) return 'Undefined';
+      const m = boxScore.match(/(\d+)\s*[-:]\s*(\d+)/);
+      if (!m) return 'Undefined';
+      const h = parseInt(m[1],10), a = parseInt(m[2],10);
+      if (isNaN(h) || isNaN(a)) return 'Undefined';
+      if (h > a) return 'Home';
+      if (h < a) return 'Away';
+      return 'Draw';
+    }
+
+    // Determine if prediction is correct given matchResult text
+    // matchResult expected like "2-1" or "Home 2-1"? We'll try to detect who won by parsing numbers
+    function determineMatchOutcomeFromResult(resultText){
+      if (!resultText) return 'Undefined';
+      const m = resultText.match(/(\d+)\s*[-:]\s*(\d+)/);
+      if (!m) {
+        // fallback: look for words
+        const lower = resultText.toLowerCase();
+        if (lower.includes('home')) return 'Home';
+        if (lower.includes('away')) return 'Away';
+        if (lower.includes('draw')) return 'Draw';
+        return 'Undefined';
+      }
+      const h = parseInt(m[1],10), a = parseInt(m[2],10);
+      if (h > a) return 'Home';
+      if (h < a) return 'Away';
+      return 'Draw';
+    }
+
+    // compute and attach prediction and correctness to each row
+    function enrichRows(rows){
+      return rows.map(r => {
+        const box = r['Box Correct Score'] || r['BoxCorrectScore'] || r['box_correct_score'] || r['box correct score'] || '';
+        const pred = computePredictionFromBox(box);
+        const matchResult = r['Match Result'] || r['MatchResult'] || r['match result'] || r['result'] || '';
+        const outcome = determineMatchOutcomeFromResult(matchResult);
+        const isCorrect = (pred !== 'Undefined' && outcome !== 'Undefined') ? (pred === outcome) : null;
+        return {...r, __box: box, __prediction: pred, __matchOutcome: outcome, __isCorrect: isCorrect};
+      });
+    }
+
+    // populate date dropdown from distinct Match Date column
+    function populateDateFilter(rows){
+      const dateCol = 'Match Date';
+      const set = new Set(rows.map(r => r[dateCol] || r['date'] || '').filter(Boolean));
+      const dates = Array.from(set).sort((a,b)=> {
+        // try ISO or fall back to string
+        const ta = Date.parse(a), tb = Date.parse(b);
+        if (!isNaN(ta) && !isNaN(tb)) return ta - tb;
+        return a.localeCompare(b);
+      });
+      // reset
+      dateFilter.innerHTML = '<option value="all">All Dates</option>';
+      dates.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = dateFormat(d);
+        dateFilter.appendChild(opt);
+      });
+    }
+
+    // animate number from 0 to target
+    function animateNumber(el, target, suffix=''){
+      const start = 0;
+      const duration = 700;
+      const startTime = performance.now();
+      function step(now){
+        const t = Math.min(1, (now - startTime) / duration);
+        const cur = Math.floor(start + (target - start)*t);
+        el.textContent = cur + suffix;
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // compute summary metrics
+    function computeSummary(rows){
+      const total = rows.length;
+      const wins = rows.filter(r => r.__isCorrect === true).length;
+      const winRate = total ? Math.round((wins/total)*100) : 0;
+      animateNumber(totalMatchesEl, total);
+      animateNumber(predWinsEl, wins);
+      animateNumber(winRateEl, winRate, '%');
+    }
+
+    // Render table rows given filteredData
+    function renderTable(rows){
+      tableBody.innerHTML = '';
+      if (!rows.length) {
+        tableBody.innerHTML = '<tr><td colspan="12" class="muted" style="padding:22px;text-align:center">No matches found</td></tr>';
+        return;
+      }
+
+      const limit = rowLimit.value === 'all' ? Infinity : parseInt(rowLimit.value,10);
+      let count = 0;
+      for (const r of rows) {
+        if (count >= limit) break;
+        count++;
+        const tr = document.createElement('tr');
+        tr.classList.add(r.__isCorrect === true ? 'row-correct' : r.__isCorrect === false ? 'row-wrong' : 'row-neutral');
+
+        const dateTd = document.createElement('td'); dateTd.textContent = r['Match Date'] || r['date'] || '';
+        const homeTd = document.createElement('td'); homeTd.textContent = r['Home Team'] || r['Home'] || r['home'] || '';
+        const awayTd = document.createElement('td'); awayTd.textContent = r['Away Team'] || r['Away'] || r['away'] || '';
+        const boxTd = document.createElement('td'); boxTd.textContent = r.__box || '';
+        const hAvgScored = document.createElement('td'); hAvgScored.textContent = r['Home Avg Goals Scored'] || r['Home Avg Goals Scored '] || r['HomeAvgGoalsScored'] || r['Hteam Avg Scored'] || '';
+        const hAvgConceded = document.createElement('td'); hAvgConceded.textContent = r['Home Avg Goals Conceded'] || r['Hteam Avg Conceded'] || '';
+        const aAvg1stScored = document.createElement('td'); aAvg1stScored.textContent = r['Away Avg Time 1st Goal Scored'] || r['Away Avg Time 1st Goal Scored '] || r['Ateam Avg Time 1st Goal Scored'] || '';
+        const aAvg1stConceded = document.createElement('td'); aAvg1stConceded.textContent = r['Away Avg Time 1st Goal Conceded'] || r['Away Avg Time 1st Goal Conceded '] || r['Ateam Avg Time 1st Goal Conceded'] || '';
+        const resultTd = document.createElement('td'); resultTd.textContent = r['Match Result'] || r['Result'] || r['MatchResult'] || '';
+
+        const predTd = document.createElement('td');
+        const pill = document.createElement('span');
+        pill.classList.add('pill');
+        if (r.__prediction === 'Home'){ pill.classList.add('pred-home'); pill.textContent = 'Home'; }
+        else if (r.__prediction === 'Away'){ pill.classList.add('pred-away'); pill.textContent = 'Away'; }
+        else if (r.__prediction === 'Draw'){ pill.classList.add('pred-draw'); pill.textContent = 'Draw'; }
+        else { pill.classList.add('pred-draw'); pill.textContent = '—'; }
+        predTd.appendChild(pill);
+
+        // view button
+        const viewTd = document.createElement('td'); viewTd.style.textAlign = 'right';
+        const viewBtn = document.createElement('button'); viewBtn.className = 'icon-btn'; viewBtn.title = 'View details';
+        viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+        viewBtn.addEventListener('click', ()=> openModal(r));
+        viewTd.appendChild(viewBtn);
+
+        // select button
+        const selTd = document.createElement('td'); selTd.style.textAlign = 'right';
+        const selBtn = document.createElement('button'); selBtn.className = 'btn secondary'; selBtn.title = 'Select match';
+        selBtn.innerHTML = '<i class="fa-solid fa-plus"></i>&nbsp;Select';
+        selBtn.addEventListener('click', ()=> toggleSelect(r));
+        selTd.appendChild(selBtn);
+
+        tr.appendChild(dateTd);
+        tr.appendChild(homeTd);
+        tr.appendChild(awayTd);
+        tr.appendChild(boxTd);
+        tr.appendChild(hAvgScored);
+        tr.appendChild(hAvgConceded);
+        tr.appendChild(aAvg1stScored);
+        tr.appendChild(aAvg1stConceded);
+        tr.appendChild(resultTd);
+        tr.appendChild(predTd);
+        tr.appendChild(viewTd);
+        tr.appendChild(selTd);
+
+        tableBody.appendChild(tr);
+      }
+    }
+
+    // filtering pipeline
+    function applyFilters(){
+      const dateVal = dateFilter.value;
+      const query = (teamSearch.value || '').trim().toLowerCase();
+      const rows = rawData.map(r => ({...r})); // clone
+      let out = enrichRows(rows);
+
+      if (dateVal && dateVal !== 'all'){
+        out = out.filter(r => (r['Match Date'] || r['date'] || '') === dateVal);
+      }
+      if (query){
+        out = out.filter(r => {
+          const h = (r['Home Team'] || r['Home'] || r['home'] || '').toLowerCase();
+          const a = (r['Away Team'] || r['Away'] || r['away'] || '').toLowerCase();
+          return h.includes(query) || a.includes(query);
+        });
+      }
+
+      filteredData = out;
+      computeSummary(filteredData);
+      renderTable(filteredData);
+    }
+
+    // modal open
+    function openModal(row){
+      modalBackdrop.classList.add('open');
+      modalTeams.textContent = `${row['Home Team'] || row['Home'] || ''}  —  ${row['Away Team'] || row['Away'] || ''}`;
+      modalDate.textContent = row['Match Date'] || row['date'] || '';
+      modalOpenLink.onclick = () => {
+        const link = row['Match Link'] || row['Link'] || row['match link'] || '';
+        if (link) window.open(link,'_blank');
+        else showToast('No match link available', 'error');
+      };
+
+      // populate fields organized in 3 columns
+      modalBody.innerHTML = '';
+      const fields = [
+        {k:'Match Link', label:'Match Link'},
+        {k:'Home Form', label:'Home Form'},
+        {k:'Home Wins', label:'Home Wins'},
+        {k:'Away Form', label:'Away Form'},
+        {k:'Away Wins', label:'Away Wins'},
+        {k:'H2H Home Wins', label:'H2H Home Wins'},
+        {k:'H2H Away Wins', label:'H2H Away Wins'},
+        {k:'H2H Draws', label:'H2H Draws'},
+        {k:'Home Table Pos', label:'Home Table Pos'},
+        {k:'Away Table Pos', label:'Away Table Pos'},
+        {k:'Home Avg Goals Scored', label:'Home Avg Goals Scored'},
+        {k:'Home Avg Goals Conceded', label:'Home Avg Goals Conceded'},
+        {k:'Home Avg Time 1st Goal Scored', label:'Home Avg Time 1st Goal Scored'},
+        {k:'Home Avg Time 1st Goal Conceded', label:'Home Avg Time 1st Goal Conceded'},
+        {k:'Home Avg Yellow Cards', label:'Home Avg Yellow Cards'},
+        {k:'Home Avg Red Cards', label:'Home Avg Red Cards'},
+        {k:'Home Avg Subs Used', label:'Home Avg Subs Used'},
+        {k:'Home Biggest Victory', label:'Home Biggest Victory'},
+        {k:'Home Biggest Defeat', label:'Home Biggest Defeat'},
+        {k:'Away Avg Goals Scored', label:'Away Avg Goals Scored'},
+        {k:'Away Avg Goals Conceded', label:'Away Avg Goals Conceded'},
+        {k:'Away Avg Time 1st Goal Scored', label:'Away Avg Time 1st Goal Scored'},
+        {k:'Away Avg Time 1st Goal Conceded', label:'Away Avg Time 1st Goal Conceded'},
+        {k:'Away Avg Yellow Cards', label:'Away Avg Yellow Cards'},
+        {k:'Away Avg Red Cards', label:'Away Avg Red Cards'},
+        {k:'Away Avg Subs Used', label:'Away Avg Subs Used'},
+        {k:'Away Biggest Victory', label:'Away Biggest Victory'},
+        {k:'Away Biggest Defeat', label:'Away Biggest Defeat'},
+      ];
+
+      fields.forEach(f=>{
+        const key = f.k;
+        const val = row[key] || row[key.replace(/\s+/g,'')] || row[key.toLowerCase()] || '';
+        const el = document.createElement('div');
+        el.className = 'field';
+        el.innerHTML = `<h4>${f.label}</h4><p>${val}</p>`;
+        modalBody.appendChild(el);
+      });
+    }
+
+    modalClose.addEventListener('click', ()=> modalBackdrop.classList.remove('open'));
+    modalBackdrop.addEventListener('click', (e)=>{
+      if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
+    });
+
+    // selections management
+    function toggleSelect(row){
+      const key = selectionKeyForRow(row);
+      const idx = selections.findIndex(s => selectionKeyForRow(s) === key);
+      if (idx === -1){
+        // add, enforce 30 limit
+        if (selections.length >= 30) {
+          showToast('Selection limit (30) reached. Remove some before adding.', 'error');
+          return;
+        }
+        selections.push(row);
+        saveSelectionsToLocal();
+        showToast('Added to FTP Selections', 'success');
+      } else {
+        selections.splice(idx,1);
+        saveSelectionsToLocal();
+        showToast('Removed from FTP Selections', 'success');
+      }
+      renderSelections();
+    }
+
+    function selectionKeyForRow(r){
+      return ((r['Match Date']||'') + '|' + (r['Home Team']||r['Home']||'') + '|' + (r['Away Team']||r['Away']||'') + '|' + (r.__box || ''));
+    }
+
+    function saveSelectionsToLocal(){
+      localStorage.setItem('ftp_selections_v1', JSON.stringify(selections));
+    }
+
+    function renderSelections(){
+      selectionsList.innerHTML = '';
+      if (!selections.length) {
+        selectionsList.innerHTML = '<div class="muted">No selections yet</div>';
+        return;
+      }
+      // list each selection as a horizontal card
+      selections.forEach((s, idx)=>{
+        const wrapper = document.createElement('div');
+        wrapper.style.display='flex';
+        wrapper.style.alignItems='center';
+        wrapper.style.justifyContent='space-between';
+        wrapper.style.padding='10px';
+        wrapper.style.borderRadius='10px';
+        wrapper.style.background='linear-gradient(90deg,#fff,#fbfdff)';
+        wrapper.style.boxShadow='0 8px 18px rgba(17,17,17,0.04)';
+        wrapper.innerHTML = `
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#f1f7ff,#e8f2ff);display:grid;place-items:center;font-weight:700">${idx+1}</div>
+            <div>
+              <div style="font-weight:700">${s['Home Team'] || s['Home'] || ''} vs ${s['Away Team'] || s['Away'] || ''}</div>
+              <div class="small muted">${s['Match Date'] || s['date'] || ''} • ${s.__box || ''}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn secondary small" title="Remove" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        `;
+        selectionsList.appendChild(wrapper);
+        wrapper.querySelector('button').addEventListener('click', (e)=>{
+          const i = parseInt(e.currentTarget.getAttribute('data-idx'),10);
+          selections.splice(i,1);
+          saveSelectionsToLocal();
+          renderSelections();
+        });
+      });
+    }
+
+    // show/hide selections area
+    viewSelectionsBtn.addEventListener('click', ()=>{
+      selectionsArea.hidden = false;
+      renderSelections();
+    });
+    closeSelections.addEventListener('click', ()=>{
+      selectionsArea.hidden = true;
+    });
+
+    clearSelectionsBtn.addEventListener('click', ()=>{
+      if (!confirm('Clear all FTP Selections locally?')) return;
+      selections = [];
+      saveSelectionsToLocal();
+      renderSelections();
+      showToast('Selections cleared', 'success');
+    });
+
+    exportSelectionsBtn.addEventListener('click', ()=>{
+      if (!selections.length) { showToast('No selections to export', 'error'); return; }
+      const csv = toCsv(selections);
+      downloadString(csv, 'ftp_selections.csv', 'text/csv');
+      showToast('Selections exported', 'success');
+    });
+
+    // fetch back csv for duplicate checking
+    async function loadBackCsv(){
+      try {
+        const rows = await fetchCsv(BACK_CSV_URL);
+        backCsvRows = rows;
+      } catch(e){
+        backCsvRows = [];
+      }
+    }
+
+    // Save to Back sheet: 1) check duplicates using BACK_CSV_URL; 2) POST to supplied Apps Script
+    async function saveSelectionsToBack(){
+      const endpoint = (appsScriptInput.value || '').trim();
+      if (!endpoint) { showToast('Paste your Apps Script POST endpoint first', 'error'); return; }
+      if (!selections.length) { showToast('No selections to save', 'error'); return; }
+
+      // fetch Back CSV to find existing entries
+      await loadBackCsv();
+
+      // duplicate check on (Match Date, Home Team, Away Team, Box Correct Score)
+      const existingKeys = new Set(backCsvRows.map(r => {
+        const date = r['Match Date'] || r['date'] || '';
+        const home = r['Home Team'] || r['Home'] || '';
+        const away = r['Away Team'] || r['Away'] || '';
+        const box = r['Box Correct Score'] || r['BoxCorrectScore'] || r['box_correct_score'] || r['box correct score'] || '';
+        return `${date}|${home}|${away}|${box}`;
+      }));
+
+      const toSave = [];
+      const duplicates = [];
+      for (const s of selections){
+        const key = `${s['Match Date']||''}|${s['Home Team']||s['Home']||''}|${s['Away Team']||s['Away']||''}|${s.__box||''}`;
+        if (existingKeys.has(key)) duplicates.push(s);
+        else toSave.push(s);
+      }
+
+      if (!toSave.length){
+        showToast('All selected rows are duplicates in Back sheet. Nothing to save.', 'error');
+        return;
+      }
+
+      // Send POST to Apps Script endpoint with array payload
+      try {
+        // payload format: {rows: [{...}], timestamp: ...}
+        const payload = { rows: toSave, timestamp: new Date().toISOString() };
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
         });
 
-        function initApp() {
-            showLoading(true);
-            addEventListeners();
-            fetchData()
-                .then(data => {
-                    allData = data;
-                    populateFilters(allData);
-                    renderApp();
-                    showLoading(false);
-                    lastRefreshed.innerHTML = `Data last refreshed: <span class="font-medium">${new Date().toLocaleString()}</span>`;
-                })
-                .catch(err => {
-                    console.error("Failed to load data:", err);
-                    showLoading(false);
-                    emptyState.classList.remove('hidden');
-                    lastRefreshed.innerHTML = `<span class="text-red-500">Failed to load data.</span>`;
-                });
-        }
+        if (!res.ok) throw new Error('Save failed: ' + res.status);
+        const respJson = await res.json().catch(()=>({success:true}));
+        // success
+        showToast('Saved '+toSave.length+' rows to Back sheet', 'success');
 
-        // --- DATA FETCHING ---
-        async function fetchData() {
-            // Simulating API call
-            // console.log("Fetching data...");
-            // return new Promise((resolve) => {
-            //     setTimeout(() => {
-            //         console.log("Data fetched successfully.");
-            //         resolve(MOCK_DATA);
-            //     }, 1500); // 1.5 second delay
-            // });
-            
-            // --- REAL FETCH LOGIC ---
-            console.log("Fetching data from Google Sheet...");
-            const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9E7TTXJgBm3CBY0Oydz5qQ_QLaP-8Za5O2GSitCWFvOSI9tt-nEaSS64P7NPX6h6aJluZ4bA16nIO/pub?gid=0&single=true&output=csv';
-            
-            try {
-                // Add a cache-busting parameter to prevent stale data
-                const response = await fetch(`${CSV_URL}&_=${new Date().getTime()}`);
-                if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
-                const csvText = await response.text();
-                console.log("Data fetched successfully.");
-                const data = csvToJSON(csvText);
-                return data;
-            } catch (error) {
-                console.error('Failed to fetch or parse CSV:', error);
-                lastRefreshed.innerHTML = `<span class="font-medium text-red-600">Error: Could not load data.</span>`;
-                return []; // Return empty array on failure
-            }
-        }
+        // Optionally remove saved ones from selections (we'll remove them)
+        selections = selections.filter(s => {
+          const key = `${s['Match Date']||''}|${s['Home Team']||s['Home']||''}|${s['Away Team']||s['Away']||''}|${s.__box||''}`;
+          return !existingKeys.has(key);
+        });
+        saveSelectionsToLocal();
+        renderSelections();
 
-        /**
-         * Converts CSV text data to a JSON array of objects
-         * @param {string} csvText - The raw CSV text.
-         * @returns {Array<Object>}
-         */
-        function csvToJSON(csvText) {
-            const lines = csvText.replace(/\r/g, '').split('\n'); // Remove carriage returns and split by newlines
-            if (lines.length < 2) return [];
+        // reload back csv
+        loadBackCsv();
 
-            const headers = lines[0].trim().split(',');
-            const data = [];
+      } catch (e){
+        console.error(e);
+        showToast('Error saving to Back: ' + e.message, 'error');
+      }
+    }
 
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim() === '') continue; // Skip empty lines
+    saveToBackBtn.addEventListener('click', saveSelectionsToBack);
 
-                const values = lines[i].trim().split(',');
-                
-                // Basic check for row length mismatch
-                if (values.length !== headers.length) {
-                    console.warn(`Skipping row ${i}: Mismatched number of columns. Expected ${headers.length}, got ${values.length}.`);
-                    continue;
-                }
+    // helper: create CSV text from array of objects (preserve headers present in first obj)
+    function toCsv(arr){
+      if (!arr.length) return '';
+      const headers = Object.keys(arr[0]).filter(k=>!k.startsWith('__'));
+      const lines = [];
+      lines.push(headers.join(','));
+      arr.forEach(r=>{
+        const row = headers.map(h => {
+          let v = r[h] || '';
+          if (typeof v === 'string' && v.includes(',')) v = `"${v.replace(/"/g,'""')}"`;
+          return v;
+        }).join(',');
+        lines.push(row);
+      });
+      return lines.join('\n');
+    }
 
-                const obj = { "id": i }; // Add a unique ID
-                headers.forEach((header, index) => {
-                    const key = header.trim();
-                    let value = values[index].trim();
-                    
-                    // Attempt to convert numbers, but only if they are not empty strings
-                    if (!isNaN(value) && value.trim() !== "") {
-                        value = Number(value);
-                    }
-                    obj[key] = value;
-                });
-                data.push(obj);
-            }
-            return data;
-        }
-        
-        // --- EVENT LISTENERS ---
-        function addEventListeners() {
-            // Tabs
-            tabBtnComparison.addEventListener('click', () => switchTab('comparison'));
-            tabBtnSuperSelections.addEventListener('click', () => switchTab('superselections'));
+    // download helper
+    function downloadString(str, filename, type='text/plain'){
+      const blob = new Blob([str], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    }
 
-            // Filters
-            searchInput.addEventListener('input', () => {
-                filterValues.search = searchInput.value;
-                currentPage = 1;
-                renderApp();
-            });
-            $q('.filter-select').forEach(sel => {
-                sel.addEventListener('change', (e) => {
-                    const id = e.target.id;
-                    if (id === 'filter-date') filterValues.date = e.target.value;
-                    if (id === 'filter-league') filterValues.league = e.target.value;
-                    if (id === 'filter-prediction') filterValues.prediction = e.target.value;
-                    if (id === 'filter-predicted-outcome') filterValues.predictedOutcome = e.target.value;
-                    if (id === 'filter-expected-outcome') filterValues.expectedOutcome = e.target.value;
-                    if (id === 'filter-match-forecast') filterValues.matchForecast = e.target.value;
-                    currentPage = 1;
-                    renderApp();
-                });
-            });
+    // export visible table
+    exportBtn.addEventListener('click', ()=>{
+      if (!filteredData.length) { showToast('No rows to export', 'error'); return; }
+      const limit = rowLimit.value === 'all' ? filteredData.length : parseInt(rowLimit.value,10);
+      const slice = filteredData.slice(0, limit).map(r => {
+        // remove internal fields
+        const copy = {...r};
+        delete copy.__prediction; delete copy.__isCorrect; delete copy.__matchOutcome; delete copy.__box;
+        return copy;
+      });
+      const csv = toCsv(slice);
+      downloadString(csv, 'ftp_net_export.csv', 'text/csv');
+      showToast('CSV exported', 'success');
+    });
 
-            // Pagination
-            [prevPage, prevPageMobile].forEach(btn => btn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderApp();
-                }
-            }));
-            [nextPage, nextPageMobile].forEach(btn => btn.addEventListener('click', () => {
-                const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderApp();
-                }
-            }));
+    // toast helper
+    function showToast(message, type='success'){
+      toastEl.textContent = message;
+      toastEl.className = 'toast show';
+      if (type === 'success') toastEl.style.background = 'linear-gradient(90deg,var(--emerald), #00e081)';
+      else toastEl.style.background = 'linear-gradient(90deg,var(--signal-red), #ff6b5b)';
+      setTimeout(()=>{ toastEl.className = 'toast'; }, 3000);
+    }
 
-            // Advanced Filter Modal
-            openAdvancedFilters.addEventListener('click', () => toggleModal(advancedFilterModal, true));
-            closeAdvancedFilters.addEventListener('click', () => toggleModal(advancedFilterModal, false));
-            applyAdvancedFilters.addEventListener('click', () => {
-                updateAdvancedFilters();
-                currentPage = 1;
-                renderApp();
-                toggleModal(advancedFilterModal, false);
-            });
-            clearAdvancedFilters.addEventListener('click', () => {
-                $q('.adv-filter-input').forEach(input => input.value = '');
-                updateAdvancedFilters();
-                currentPage = 1;
-                renderApp();
-                toggleModal(advancedFilterModal, false);
-            });
+    // dark mode toggle
+    const toggleDarkBtn = document.getElementById('toggleDarkBtn');
+    toggleDarkBtn.addEventListener('click', ()=>{
+      document.documentElement.classList.toggle('dark');
+    });
 
-            // Row Detail Modal
-            closeRowDetail.addEventListener('click', () => toggleModal(rowDetailModal, false));
-            
-            // Export
-            exportCsvBtn.addEventListener('click', exportToCSV);
-        }
+    // row limit / filters events
+    dateFilter.addEventListener('change', applyFilters);
+    teamSearch.addEventListener('input', debounce(applyFilters, 240));
+    rowLimit.addEventListener('change', ()=> renderTable(filteredData));
 
-        // --- RENDER FUNCTIONS ---
+    // debounce helper
+    function debounce(fn, wait=200){
+      let t;
+      return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); };
+    }
 
-        /**
-         * Main render function, re-calculates and re-draws UI components
-         */
-        function renderApp() {
-            applyFilters();
-            updateSummaryCards(filteredData);
-            renderTable(filteredData);
-            renderPagination(filteredData);
-            lucide.createIcons(); // Re-render icons
-        }
+    // selection render at startup
+    renderSelections();
 
-        /**
-         * Populates filter dropdowns with unique values from the dataset
-         */
-        function populateFilters(data) {
-            const uniques = {
-                date: new Set(),
-                league: new Set(),
-                prediction: new Set(),
-                predictedOutcome: new Set(),
-                expectedOutcome: new Set(),
-                matchForecast: new Set(),
-            };
+    // initial load
+    (async function init(){
+      // fetch main CSV
+      rawData = await fetchCsv(MAIN_CSV_URL);
+      if (!rawData.length){
+        tableBody.innerHTML = '<tr><td colspan="12" class="muted" style="padding:22px;text-align:center">Failed to load CSV — check the URL or CORS</td></tr>';
+        return;
+      }
 
-            data.forEach(row => {
-                uniques.date.add(row['Date']);
-                uniques.league.add(row['League']);
-                uniques.prediction.add(row['Prediction']);
-                uniques.predictedOutcome.add(row['Predicted Outcome']);
-                uniques.expectedOutcome.add(row['Expected Outcome']);
-                uniques.matchForecast.add(row['Match Forecast']);
-            });
+      // attach dates
+      populateDateFilter(rawData);
 
-            const populateSelect = (selectEl, values) => {
-                const sortedValues = [...values].sort();
-                sortedValues.forEach(val => {
-                    if (val) {
-                        const option = document.createElement('option');
-                        option.value = val;
-                        option.textContent = val;
-                        selectEl.appendChild(option);
-                    }
-                });
-            };
-            
-            populateSelect(filterDate, uniques.date);
-            populateSelect(filterLeague, uniques.league);
-            populateSelect(filterPrediction, uniques.prediction);
-            populateSelect(filterPredictedOutcome, uniques.predictedOutcome);
-            populateSelect(filterExpectedOutcome, uniques.expectedOutcome);
-            populateSelect(filterMatchForecast, uniques.matchForecast);
-        }
-        
-        /**
-         * Filters `allData` based on `currentTab` and `filterValues`
-         */
-        function applyFilters() {
-            const { search, date, league, prediction, predictedOutcome, expectedOutcome, matchForecast, adv } = filterValues;
-            const searchTerm = search.toLowerCase();
+      // enrich & render
+      applyFilters();
 
-            let data = allData;
+      // load back csv for duplicate checking
+      await loadBackCsv();
+    })();
 
-            // 1. Super Selections base filter
-            if (currentTab === 'superselections') {
-                data = data.filter(row => {
-                    // Use parseFloat to convert values to numbers, handling strings, "%", or "N/A" (which becomes NaN)
-                    const confidence = parseFloat(row['Confidence %']);
-                    const predProb = parseFloat(row['Predicted Probability (%)']);
-                    const probRate = parseFloat(row['Probability Rate']);
-                    const forecastProb = parseFloat(row['Match Forecast Probability']);
+    // helper: compute selection presence
+    function isRowSelected(row){
+      const k = selectionKeyForRow(row);
+      return selections.some(s => selectionKeyForRow(s) === k);
+    }
 
-                    return (
-                        confidence > 65 &&
-                        predProb > 55 &&
-                        probRate > 60 &&
-                        forecastProb > 58
-                    );
-                });
-            }
+    // scroll-to-top (floating button)
+    const scrollBtn = document.createElement('button');
+    scrollBtn.className = 'floating-back';
+    scrollBtn.style.right = '88px';
+    scrollBtn.style.bottom = '22px';
+    scrollBtn.innerHTML = '<a class="" style="width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:rgba(17,17,17,0.08);color:var(--jet);box-shadow:0 8px 20px rgba(17,17,17,0.06)"><i class="fa-solid fa-arrow-up"></i></a>';
+    scrollBtn.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+    document.body.appendChild(scrollBtn);
 
-            // 2. Main Filters
-            data = data.filter(row => {
-                return (
-                    (searchTerm === '' || row['Home Team'].toLowerCase().includes(searchTerm) || row['Away Team'].toLowerCase().includes(searchTerm)) &&
-                    (date === '' || row['Date'] === date) &&
-                    (league === '' || row['League'] === league) &&
-                    (prediction === '' || row['Prediction'] === prediction) &&
-                    (predictedOutcome === '' || row['Predicted Outcome'] === predictedOutcome) &&
-                    (expectedOutcome === '' || row['Expected Outcome'] === expectedOutcome) &&
-                    (matchForecast === '' || row['Match Forecast'] === matchForecast)
-                );
-            });
-            
-            // 3. Advanced Filters (Range)
-            data = data.filter(row => {
-                // Also apply parseFloat here for robustness
-                const homeOdds = parseFloat(row['Home Odds']);
-                const drawOdds = parseFloat(row['Draw Odds']);
-                const awayOdds = parseFloat(row['Away Odds']);
-                const confidence = parseFloat(row['Confidence %']);
-                const homePower = parseFloat(row['Home Team Power']);
-                const awayPower = parseFloat(row['Away Team Power']);
-                const predProb = parseFloat(row['Predicted Probability (%)']);
-                const probRate = parseFloat(row['Probability Rate']);
-                const forecastProb = parseFloat(row['Match Forecast Probability']);
-
-                return (
-                    (adv.homeOddsMin === '' || homeOdds >= adv.homeOddsMin) &&
-                    (adv.homeOddsMax === '' || homeOdds <= adv.homeOddsMax) &&
-                    (adv.drawOddsMin === '' || drawOdds >= adv.drawOddsMin) &&
-                    (adv.drawOddsMax === '' || drawOdds <= adv.drawOddsMax) &&
-                    (adv.awayOddsMin === '' || awayOdds >= adv.awayOddsMin) &&
-                    (adv.awayOddsMax === '' || awayOdds <= adv.awayOddsMax) &&
-                    (adv.confidenceMin === '' || confidence >= adv.confidenceMin) &&
-                    (adv.confidenceMax === '' || confidence <= adv.confidenceMax) &&
-                    (adv.homePowerMin === '' || homePower >= adv.homePowerMin) &&
-                    (adv.homePowerMax === '' || homePower <= adv.homePowerMax) &&
-                    (adv.awayPowerMin === '' || awayPower >= adv.awayPowerMin) &&
-                    (adv.awayPowerMax === '' || awayPower <= adv.awayPowerMax) &&
-                    (adv.predProbMin === '' || predProb >= adv.predProbMin) &&
-                    (adv.predProbMax === '' || predProb <= adv.predProbMax) &&
-                    (adv.probRateMin === '' || probRate >= adv.probRateMin) &&
-                    (adv.probRateMax === '' || probRate <= adv.probRateMax) &&
-                    (adv.forecastProbMin === '' || forecastProb >= adv.forecastProbMin) &&
-                    (adv.forecastProbMax === '' || forecastProb <= adv.forecastProbMax)
-                );
-            });
-
-            filteredData = data;
-        }
-
-        /**
-         * Renders the paginated table view
-         */
-        function renderTable(data) {
-            tableBody.innerHTML = ''; // Clear existing rows
-
-            if (data.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-
-            const startIndex = (currentPage - 1) * rowsPerPage;
-            const endIndex = startIndex + rowsPerPage;
-            const paginatedData = data.slice(startIndex, endIndex);
-
-            paginatedData.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-gray-50 transition-colors';
-                
-                const getPredictionColor = (prediction) => {
-                    if (prediction === 'Home') return 'text-blue-600 font-medium';
-                    if (prediction === 'Away') return 'text-red-600 font-medium';
-                    if (prediction === 'Draw') return 'text-gray-600 font-medium';
-                    return '';
-                };
-
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <button class="view-btn text-blue-600 hover:text-blue-800" data-id="${row.id}">
-                            <i data-lucide="eye" class="w-5 h-5"></i>
-                        </button>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${row['Date']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row['Home Team']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${row['Away Team']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${row['Home Odds']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${row['Draw Odds']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${row['Away Odds']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${row['Correct Score']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${getPredictionColor(row['Prediction'])}">${row['Prediction']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${getPredictionColor(row['Predicted Outcome'])}">${row['Predicted Outcome']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${getPredictionColor(row['Expected Outcome'])}">${row['Expected Outcome']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm ${getPredictionColor(row['Match Forecast'])}">${row['Match Forecast']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${row['Match Result']}</td>
-                `;
-                tableBody.appendChild(tr);
-            });
-            
-            // Add event listeners to new view buttons
-            tableBody.querySelectorAll('.view-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    showRowDetails(id);
-                });
-            });
-        }
-
-        /**
-         * Renders pagination controls and info
-         */
-        function renderPagination(data) {
-            const total = data.length;
-            const totalPages = Math.ceil(total / rowsPerPage);
-            
-            if (total === 0) {
-                totalItems.textContent = '0';
-                pageStartIndex.textContent = '0';
-                pageEndIndex.textContent = '0';
-                pageInfo.textContent = 'Page 1 of 1';
-            } else {
-                const start = (currentPage - 1) * rowsPerPage + 1;
-                const end = Math.min(start + rowsPerPage - 1, total);
-                
-                totalItems.textContent = total;
-                pageStartIndex.textContent = start;
-                pageEndIndex.textContent = end;
-                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-            }
-
-            [prevPage, prevPageMobile].forEach(btn => btn.disabled = currentPage === 1);
-            [nextPage, nextPageMobile].forEach(btn => btn.disabled = currentPage === totalPages || totalPages === 0);
-        }
-
-        /**
-         * Updates the 5 summary cards at the top
-         */
-        function updateSummaryCards(data) {
-            const total = data.length;
-            cardTotalMatches.textContent = total;
-
-            if (total === 0) {
-                cardPredictionWins.textContent = '0 (0%)';
-                cardOutcomeWins.textContent = '0 (0%)';
-                cardExpectedWins.textContent = '0 (0%)';
-                cardForecastWins.textContent = '0 (0%)';
-                return;
-            }
-
-            let wins = {
-                prediction: 0,
-                outcome: 0,
-                expected: 0,
-                forecast: 0,
-            };
-
-            data.forEach(row => {
-                const result = row['Match Result'];
-                const [homeGoals, awayGoals] = result.split('-').map(Number);
-                
-                let actualWinner = 'Draw';
-                if (homeGoals > awayGoals) actualWinner = 'Home';
-                if (awayGoals > homeGoals) actualWinner = 'Away';
-                
-                if (row['Prediction'] === actualWinner) wins.prediction++;
-                if (row['Predicted Outcome'] === actualWinner) wins.outcome++;
-                if (row['Expected Outcome'] === actualWinner) wins.expected++;
-                if (row['Match Forecast'] === actualWinner) wins.forecast++;
-            });
-
-            const formatRate = (count) => `${count} (${((count / total) * 100).toFixed(0)}%)`;
-            
-            cardPredictionWins.textContent = formatRate(wins.prediction);
-            cardOutcomeWins.textContent = formatRate(wins.outcome);
-            cardExpectedWins.textContent = formatRate(wins.expected);
-            cardForecastWins.textContent = formatRate(wins.forecast);
-        }
-        
-        // --- MODAL & UI HELPERS ---
-
-        /**
-         * Toggles loading spinner visibility
-         */
-        function showLoading(isLoading) {
-            if (isLoading) {
-                loadingOverlay.classList.remove('hidden');
-            } else {
-                loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        /**
-         * Toggles a modal's visibility with transitions
-         */
-        function toggleModal(modalElement, show) {
-            if (show) {
-                modalElement.classList.remove('hidden');
-                setTimeout(() => {
-                    modalElement.classList.remove('opacity-0');
-                    modalElement.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
-                    modalElement.querySelector('.modal-content').classList.add('opacity-100', 'scale-100');
-                }, 10);
-            } else {
-                modalElement.classList.add('opacity-0');
-                modalElement.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
-                modalElement.querySelector('.modal-content').classList.remove('opacity-100', 'scale-100');
-                setTimeout(() => {
-                    modalElement.classList.add('hidden');
-                }, 300);
-            }
-        }
-        
-        /**
-         * Handles switching between "All Matches" and "Super Selections"
-         */
-        function switchTab(tabName) {
-            currentTab = tabName;
-            currentPage = 1;
-            
-            if (tabName === 'comparison') {
-                tabBtnComparison.classList.add('text-blue-600', 'border-blue-600');
-                tabBtnComparison.classList.remove('text-gray-500');
-                tabBtnSuperSelections.classList.add('text-gray-500');
-                tabBtnSuperSelections.classList.remove('text-blue-600', 'border-blue-600');
-            } else {
-                tabBtnSuperSelections.classList.add('text-blue-600', 'border-blue-600');
-                tabBtnSuperSelections.classList.remove('text-gray-500');
-                tabBtnComparison.classList.add('text-gray-500');
-                tabBtnComparison.classList.remove('text-blue-600', 'border-blue-600');
-            }
-            renderApp();
-        }
-
-        /**
-         * Updates `filterValues.adv` from the advanced filter modal inputs
-         */
-        function updateAdvancedFilters() {
-            filterValues.adv = {
-                homeOddsMin: $('filter-home-odds-min').value, homeOddsMax: $('filter-home-odds-max').value,
-                drawOddsMin: $('filter-draw-odds-min').value, drawOddsMax: $('filter-draw-odds-max').value,
-                awayOddsMin: $('filter-away-odds-min').value, awayOddsMax: $('filter-away-odds-max').value,
-                confidenceMin: $('filter-confidence-min').value, confidenceMax: $('filter-confidence-max').value,
-                homePowerMin: $('filter-home-power-min').value, homePowerMax: $('filter-home-power-max').value,
-                awayPowerMin: $('filter-away-power-min').value, awayPowerMax: $('filter-away-power-max').value,
-                predProbMin: $('filter-pred-prob-min').value, predProbMax: $('filter-pred-prob-max').value,
-                probRateMin: $('filter-prob-rate-min').value, probRateMax: $('filter-prob-rate-max').value,
-                forecastProbMin: $('filter-forecast-prob-min').value, forecastProbMax: $('filter-forecast-prob-max').value,
-            };
-        }
-
-        /**
-         * Populates and shows the row detail modal
-         */
-        function showRowDetails(id) {
-            const row = allData.find(r => r.id == id);
-            if (!row) return;
-
-            // Helper function for creating detail items
-            const detailItem = (icon, label, value, color = 'text-gray-900') => `
-                <div class="flex items-start">
-                    <i data-lucide="${icon}" class="w-5 h-5 text-blue-600 mt-1 mr-3 flex-shrink-0"></i>
-                    <div>
-                        <p class="text-sm font-medium text-gray-500">${label}</p>
-                        <p class="text-base font-semibold ${color}">${value || 'N/A'}</p>
-                    </div>
-                </div>
-            `;
-            
-            const detailBlock = (title, content) => `
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">${title}</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-5">
-                        ${content}
-                    </div>
-                </div>
-            `;
-
-            rowDetailContent.innerHTML = `
-                ${detailBlock('Match Info', 
-                    detailItem('shield', 'League', row['League']) +
-                    detailItem('users', 'Home Team', row['Home Team'], 'text-blue-700') +
-                    detailItem('users', 'Away Team', row['Away Team'], 'text-red-700') +
-                    detailItem('calendar', 'Date', row['Date']) +
-                    detailItem('flag', 'Match Result', `${row['Home FT']} - ${row['Away FT']}`, 'text-2xl') +
-                    detailItem('clipboard-check', 'Prediction Status', row['Prediction Status'], row['Prediction Status'] === 'Win' ? 'text-green-600' : 'text-red-600')
-                )}
-                
-                ${detailBlock('Match Odds', 
-                    detailItem('wallet', 'Home Odds', row['Home Odds']) +
-                    detailItem('wallet', 'Draw Odds', row['Draw Odds']) +
-                    detailItem('wallet', 'Away Odds', row['Away Odds']) +
-                    detailItem('percent', 'Confidence %', `${row['Confidence %']}%`) +
-                    detailItem('star', 'Correct Score', row['Correct Score']) +
-                    detailItem('link', 'Match URL', `<a href="${row['Match URL']}" target="_blank" class="text-blue-600 hover:underline">View Match</a>`)
-                )}
-                
-                ${detailBlock('Team Stats & Form', 
-                    detailItem('bar-chart-3', 'Home Form', row['Home Form']) +
-                    detailItem('bar-chart-3', 'Away Form', row['Away Form']) +
-                    detailItem('trending-up', 'Home Standing', row['Home Team Table Standing']) +
-                    detailItem('trending-up', 'Away Standing', row['Away Team Table Standing']) +
-                    detailItem('home', 'L5 Home Wins (H-Team)', row['L5 H-Team Home W']) +
-                    detailItem('plane', 'L5 Away Wins (A-Team)', row['L5 A-Team Away W'])
-                )}
-
-                ${detailBlock('Prediction Models',
-                    detailItem('target', 'Prediction', row['Prediction'], 'text-blue-700 font-bold') +
-                    detailItem('bar-chart-2', 'Predicted Outcome', row['Predicted Outcome'], 'text-green-700 font-bold') +
-                    detailEntry('Predicted Total Goals', row['Predicted Total Goals']) +
-                    detailEntry('Predicted Probability (%)', `${row['Predicted Probability (%)']}%`) +
-                    detailItem('pie-chart', 'Expected Outcome', row['Expected Outcome'], 'text-yellow-700 font-bold') +
-                    detailEntry('Probability Rate', row['Probability Rate']) +
-                    detailEntry('Goals to be Scored', row['Goals to be Scored']) +
-                    detailItem('zap', 'Match Forecast', row['Match Forecast'], 'text-purple-700 font-bold') +
-                    detailEntry('Forecast Probability', `${row['Match Forecast Probability']}%`) +
-                    detailEntry('Forecast Recommendation', row['Match Forecast Recommendation']) +
-                    detailEntry('Forecast Goals', row['Match Forecast Goals'])
-                )}
-
-                ${detailBlock('Advanced Power & Goal Stats (Home)', 
-                    detailItem('gauge-circle', 'Home Team Power', row['Home Team Power']) +
-                    detailEntry('Avg Scored (Home)', row['HTeam Avg Scored']) +
-                    detailEntry('Avg Conceded (Home)', row['HTeam Avg Conceded']) +
-                    detailEntry('HTeam % > 1.5', `${row['HTeam % -OV1.5']}%`) +
-                    detailEntry('HTeam % > 2.5', `${row['HTeam % -OV2.5']}%`) +
-                    detailEntry('HTeam % > 3.5', `${row['HTeam % -OV3.5']}%`) +
-                    detailEntry('Power - Over 2.5 (Home)', row['HTeam Power - Over 2.5']) +
-                    detailEntry('Power - BTTS (Home)', row['HTeam Power - BTTS'])
-                )}
-                
-                ${detailBlock('Advanced Power & Goal Stats (Away)', 
-                    detailItem('gauge-circle', 'Away Team Power', row['Away Team Power']) +
-                    detailEntry('Avg Scored (Away)', row['ATeam Avg Scored']) +
-                    detailEntry('Avg Conceded (Away)', row['ATeam Avg Conceded']) +
-                    detailEntry('ATeam % > 1.5', `${row['ATeam % -OV1.5']}%`) +
-                    detailEntry('ATeam % > 2.5', `${row['ATeam % -OV2.5']}%`) +
-                    detailEntry('ATeam % > 3.5', `${row['ATeam % -OV3.5']}%`) +
-                    detailEntry('Power - Over 2.5 (Away)', row['ATeam Power - Over 2.5']) +
-                    detailEntry('Power - BTTS (Away)', row['ATeam Power - BTTS'])
-                )}
-            `;
-            
-            // This is a simple version of detailItem for the "Prediction Models" block
-            // to avoid repeating icons and save space.
-            function detailEntry(label, value, color = 'text-gray-900') {
-                 return `
-                <div>
-                    <p class="text-sm font-medium text-gray-500">${label}</p>
-                    <p class="text-base font-semibold ${color}">${value || 'N/A'}</p>
-                </div>
-            `;
-            }
-
-            lucide.createIcons();
-            toggleModal(rowDetailModal, true);
-        }
-        
-        // --- EXPORT FUNCTION ---
-        function exportToCSV() {
-            const data = filteredData;
-            if (data.length === 0) {
-                alert("No data to export.");
-                return;
-            }
-
-            const headers = Object.keys(data[0]);
-            const csvRows = [];
-            
-            // Add header row
-            csvRows.push(headers.join(','));
-            
-            // Add data rows
-            for (const row of data) {
-                const values = headers.map(header => {
-                    let cell = row[header];
-                    cell = cell === null || cell === undefined ? '' : cell;
-                    let strCell = cell.toString();
-                    // Escape commas and quotes
-                    if (strCell.includes(',') || strCell.includes('"') || strCell.includes('\n')) {
-                        strCell = `"${strCell.replace(/"/g, '""')}"`;
-                    }
-                    return strCell;
-                });
-                csvRows.push(values.join(','));
-            }
-
-            const csvString = csvRows.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.setAttribute('href', url);
-            a.setAttribute('download', `match_comparison_${currentTab}_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-    </script>
+    // helper: when app is long, clicking "Select" may add duplicate till we re-render; make sure toggleSelect uses selectionKeyForRow
+    // final note: This page requires the CSV to be accessible via public URL without CORS restrictions.
+  </script>
 </body>
 </html>
-
-
