@@ -1,979 +1,647 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FTP.NET — Comparison</title>
+import React, { useEffect, useMemo, useState } from "react";
 
-  <!-- Font Awesome for icons -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+// FTP.NET - Single-file React component
+// - Assumes Tailwind CSS is available in the host project
+// - Exposes a responsive UI with filters, cards, table, modal and FTP Selections tab
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+export default function FTPNet() {
+  const DATA_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv";
 
-  <style>
-    :root{
-      --royal-blue: #005AE0;
-      --emerald: #00C16A;
-      --white: #FFFFFF;
-      --jet: #111111;
-      --signal-red: #FF3B30;
-      --soft-green: #E9FFF4;
-      --soft-red: #FFECEC;
-      --ice-blue: #E8F2FF;
-      --gold: #FFD93D;
+  const FTP_SAVE_CSV_URL =
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv";
 
-      --card-radius: 14px;
-      --shadow-sm: 0 4px 18px rgba(17,17,17,0.06);
-      --shadow-md: 0 10px 30px rgba(17,17,17,0.08);
-      --glass: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,255,0.85));
+  // Data & UI state
+  const [rawCsv, setRawCsv] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Filters
+  const [matchDate, setMatchDate] = useState("");
+  const [boxScore, setBoxScore] = useState("");
+  const [homeWinsMin, setHomeWinsMin] = useState(0);
+  const [homeWinsMax, setHomeWinsMax] = useState(999);
+  const [awayWinsMin, setAwayWinsMin] = useState(0);
+  const [awayWinsMax, setAwayWinsMax] = useState(999);
+  const [search, setSearch] = useState("");
+
+  // Pagination
+  const PAGE_SIZE = 30;
+  const [page, setPage] = useState(1);
+
+  // Modal & selections
+  const [viewRow, setViewRow] = useState(null);
+  const [selectionsTab, setSelectionsTab] = useState(false);
+  const [selectedRows, setSelectedRows] = useState(() => {
+    try {
+      const s = localStorage.getItem("ftp_selections");
+      return s ? JSON.parse(s) : [];
+    } catch (e) {
+      return [];
     }
+  });
 
-    /* dark mode root override */
-    .dark {
-      --white: #0b0b0c;
-      --jet: #f2f2f2;
-      --glass: linear-gradient(180deg, rgba(16,16,16,0.9), rgba(10,10,12,0.85));
+  useEffect(() => {
+    fetchCsv();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("ftp_selections", JSON.stringify(selectedRows));
+  }, [selectedRows]);
+
+  async function fetchCsv() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(DATA_CSV_URL);
+      if (!res.ok) throw new Error("Failed to fetch CSV");
+      const text = await res.text();
+      setRawCsv(text);
+      const parsed = parseCsv(text);
+      setRows(parsed);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    html,body{
-      height:100%;
-      margin:0;
-      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(180deg,#FBFDFF 0%, #F5F9FF 100%);
-      color:var(--jet);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-    }
-
-    header.appbar{
-      display:flex;
-      align-items:center;
-      gap:18px;
-      padding:20px 28px;
-      border-bottom:1px solid rgba(17,17,17,0.04);
-      background:transparent;
-      position:sticky;
-      top:0;
-      z-index:30;
-      backdrop-filter: blur(6px);
-    }
-
-    .brand {
-      display:flex;
-      gap:12px;
-      align-items:center;
-    }
-    .brand-logo{
-      width:44px;height:44px;border-radius:10px;
-      background:linear-gradient(135deg,var(--royal-blue), #3b7cff);
-      display:grid;place-items:center;color:white;font-weight:800;
-      box-shadow:var(--shadow-sm);
-    }
-    h1.title{font-size:18px;margin:0;font-weight:700;letter-spacing:0.2px}
-    p.subtitle{margin:0;font-size:12px;color:rgba(17,17,17,0.55)}
-
-
-    main.wrapper{padding:22px 28px; max-width:1200px;margin:24px auto 80px;}
-
-    /* filter bar */
-    .filters {
-      display:flex;
-      gap:12px;
-      align-items:center;
-      margin-bottom:18px;
-      flex-wrap:wrap;
-    }
-    .filter, .search {
-      background:var(--white);
-      border-radius:12px;
-      padding:8px 12px;
-      display:flex;
-      align-items:center;
-      gap:8px;
-      box-shadow:var(--shadow-sm);
-      border:1px solid rgba(17,17,17,0.03);
-    }
-    .filter select, .search input {
-      border:none;
-      outline:none;
-      font-size:14px;
-      background:transparent;
-      width:220px;
-    }
-    .limit-select{min-width:120px}
-
-    /* summary cards */
-    .cards {display:grid;grid-template-columns:repeat(3,1fr); gap:14px;margin-bottom:20px;}
-    .card{
-      background:var(--white);
-      border-radius:var(--card-radius);
-      padding:16px;
-      box-shadow:var(--shadow-md);
-      display:flex;
-      align-items:center;
-      gap:14px;
-      transition:transform .32s ease;
-    }
-    .card:hover{transform:translateY(-6px)}
-    .card .icon {
-      width:56px;height:56px;border-radius:12px;display:grid;place-items:center;color:white;font-size:20px;
-      box-shadow:0 8px 20px rgba(5,20,60,0.08);
-      flex-shrink:0;
-    }
-    .card .meta{font-size:12px;color:rgba(17,17,17,0.55)}
-    .card .num{font-size:22px;font-weight:700}
-
-    /* gradients */
-    .g-blue{background:linear-gradient(135deg,#005AE0 0%, #2D79FF 100%)}
-    .g-green{background:linear-gradient(135deg,#00C16A 0%, #00E081 100%)}
-    .g-gold{background:linear-gradient(135deg,#FFD93D 0%, #FFCC00 100%); color: #111;}
-
-    /* table */
-    .table-card{background:var(--white); border-radius:16px; padding:12px; box-shadow:var(--shadow-md);}
-    table.match-table{width:100%; border-collapse:collapse; font-size:13px;}
-    table thead th{ text-align:left; padding:10px 12px; font-weight:600; color:rgba(17,17,17,0.7); font-size:12px; border-bottom:1px solid rgba(17,17,17,0.06);}
-    table tbody td{ padding:10px 12px; border-bottom:1px solid rgba(17,17,17,0.03); vertical-align:middle;}
-    tr.row-correct{ background: linear-gradient(90deg, rgba(0,193,106,0.06), rgba(233,255,244,0.6)); }
-    tr.row-wrong{ background: linear-gradient(90deg, rgba(255,59,48,0.05), rgba(255,236,236,0.85)); }
-    tr.row-neutral{ background:transparent; }
-    tr:hover td{ background:rgba(0,0,0,0.01); transform:translateY(0);}
-
-    .pill { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
-    .pill.pred-home{ background: linear-gradient(90deg,#e8f2ff, #dfeeff); color:var(--royal-blue) }
-    .pill.pred-away{ background: linear-gradient(90deg,#fff6f6, #ffecec); color:var(--signal-red) }
-    .pill.pred-draw{ background: linear-gradient(90deg,#f7f7f8,#f1f1f2); color: #555 }
-
-    .actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; margin-bottom:12px}
-    .btn { background:var(--royal-blue); color:white; border:none; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; display:inline-flex; gap:8px; align-items:center; }
-    .btn.secondary { background:transparent; color:var(--royal-blue); border:1px solid rgba(0,90,224,0.12) }
-    .btn.ghost { background:transparent; color:var(--jet); border:1px dashed rgba(17,17,17,0.06) }
-
-    /* view/select icons */
-    .icon-btn { background:transparent; border:none; cursor:pointer; padding:8px; border-radius:10px; }
-    .icon-btn:hover{ background:rgba(0,90,224,0.04) }
-
-    /* modal */
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(3,6,18,0.36); display:grid; place-items:center; z-index:80; opacity:0; pointer-events:none; transition:opacity .22s ease;}
-    .modal-backdrop.open{ opacity:1; pointer-events:auto; }
-    .modal {
-      width:min(920px,95%); background:var(--white); border-radius:16px; overflow:hidden; box-shadow:0 30px 80px rgba(11,18,55,0.35);
-      transform: translateY(24px) scale(.98);
-      transition:transform .26s cubic-bezier(.2,.9,.2,1), opacity .26s;
-      opacity:0;
-    }
-    .modal-backdrop.open .modal{ transform:translateY(0) scale(1); opacity:1; }
-    .modal .modal-header { padding:18px 20px; display:flex; justify-content:space-between; align-items:center; gap:12px; background:linear-gradient(90deg,var(--royal-blue), #2D79FF); color:white; }
-    .modal .modal-body{ padding:18px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; color:var(--jet); background:var(--white) }
-    .modal .field { background: #f7f9ff; padding:10px;border-radius:10px; font-size:13px; }
-    .modal .field h4{ margin:0 0 6px 0; font-size:12px; color:rgba(17,17,17,0.6); }
-    .modal .field p{ margin:0; font-weight:600; font-size:14px; color:var(--jet) }
-
-    /* selections area */
-    .selections {
-      margin-top:18px;
-      background:linear-gradient(180deg,#FFFFFF,#FBFDFF);
-      padding:14px;border-radius:14px; box-shadow:var(--shadow-sm);
-    }
-
-    /* floating back button */
-    .floating-back {
-      position:fixed; right:22px; bottom:22px; z-index:90;
-    }
-    .floating-back a{
-      width:56px;height:56px;border-radius:999px;display:grid;place-items:center;background:var(--royal-blue);color:white;box-shadow:0 12px 30px rgba(0,90,224,0.18);
-      transition:transform .18s, box-shadow .18s;
-    }
-    .floating-back a:hover{ transform:translateY(-6px); box-shadow:0 20px 40px rgba(0,90,224,0.28); }
-
-    /* small utilities */
-    .muted{ color: rgba(17,17,17,0.45); font-size:13px; }
-    .space { height:16px; }
-
-    /* responsive */
-    @media (max-width:980px){
-      .cards{ grid-template-columns:repeat(1,1fr); }
-      .modal .modal-body{ grid-template-columns:repeat(1,1fr); }
-      .filter select{ width:160px; }
-    }
-
-    /* toast */
-    .toast {
-      position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:120;
-      padding:12px 16px; border-radius:12px; color:white; font-weight:700; box-shadow:0 12px 30px rgba(0,0,0,0.18); display:none;
-    }
-    .toast.show { display:block; animation:toastIn .26s ease; }
-    @keyframes toastIn {
-      from { transform:translateX(-50%) translateY(16px); opacity:0 }
-      to { transform:translateX(-50%) translateY(0); opacity:1 }
-    }
-
-    /* small utility styles */
-    .small { font-size:12px; color:rgba(17,17,17,0.6); }
-    .chip { padding:6px 8px; border-radius:999px; background:rgba(17,17,17,0.04); font-size:12px;}
-  </style>
-</head>
-<body>
-  <header class="appbar">
-    <div class="brand">
-      <div class="brand-logo">FTP</div>
-      <div>
-        <h1 class="title">FTP.NET — Comparison</h1>
-        <p class="subtitle">Interactive match predictions dashboard</p>
-      </div>
-    </div>
-
-    <div style="flex:1"></div>
-
-    <div style="display:flex;align-items:center;gap:10px">
-      <button class="btn ghost" id="toggleDarkBtn" title="Toggle dark mode">
-        <i class="fa-regular fa-moon"></i>&nbsp;<span class="small">Dark</span>
-      </button>
-      <button class="btn secondary" id="exportBtn" title="Export visible table CSV">
-        <i class="fa-solid fa-file-csv"></i>&nbsp;Export CSV
-      </button>
-    </div>
-  </header>
-
-  <main class="wrapper" id="app">
-    <!-- Filters -->
-    <div class="filters" role="region" aria-label="Filters">
-      <div class="filter">
-        <i class="fa-solid fa-calendar-days" style="color:var(--royal-blue)"></i>
-        <select id="dateFilter"><option value="all">All Dates</option></select>
-      </div>
-
-      <div class="search">
-        <i class="fa-solid fa-magnifying-glass" style="color:rgba(17,17,17,0.45)"></i>
-        <input id="teamSearch" placeholder="Search teams (home or away)..." />
-      </div>
-
-      <div class="filter limit-select">
-        <label class="small muted" style="margin-right:8px">Rows</label>
-        <select id="rowLimit">
-          <option value="30">30</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="all">All</option>
-        </select>
-      </div>
-
-      <div style="flex:1"></div>
-
-      <div class="filter" style="gap:10px">
-        <i class="fa-solid fa-link" style="color:rgba(17,17,17,0.5)"></i>
-        <input id="appsScriptUrl" placeholder="Paste Apps Script POST endpoint (optional)" style="width:320px;" />
-      </div>
-    </div>
-
-    <!-- Summary cards -->
-    <div class="cards" id="summaryCards">
-      <div class="card">
-        <div class="icon g-blue"><i class="fa-solid fa-calendar-days"></i></div>
-        <div>
-          <div class="meta">Total Matches</div>
-          <div class="num" id="totalMatches">0</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="icon g-green"><i class="fa-solid fa-trophy"></i></div>
-        <div>
-          <div class="meta">Predictions Won</div>
-          <div class="num" id="predWins">0</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="icon g-gold"><i class="fa-solid fa-chart-pie"></i></div>
-        <div>
-          <div class="meta">Win Rate</div>
-          <div class="num" id="winRate">0%</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="actions">
-      <div class="small muted">Loaded from Sheet CSV</div>
-      <div style="width:10px"></div>
-      <button class="btn" id="clearSelectionsBtn"><i class="fa-solid fa-xmark"></i> Clear Selections</button>
-      <button class="btn secondary" id="viewSelectionsBtn"><i class="fa-solid fa-folder-open"></i> FTP Selections</button>
-      <button class="btn" id="saveToBackBtn"><i class="fa-solid fa-upload"></i> Save Selections</button>
-    </div>
-
-    <!-- Table -->
-    <div class="table-card">
-      <table class="match-table" id="matchTable" role="table" aria-label="Matches">
-        <thead>
-          <tr>
-            <th>Match Date</th>
-            <th>Home Team</th>
-            <th>Away Team</th>
-            <th>Box Correct Score</th>
-            <th>Home Avg Goals Scored</th>
-            <th>Home Avg Goals Conceded</th>
-            <th>Away Avg 1st Goal Scored</th>
-            <th>Away Avg 1st Goal Conceded</th>
-            <th>Match Result</th>
-            <th>Prediction</th>
-            <th style="text-align:right">View</th>
-            <th style="text-align:right">Select</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr><td colspan="12" class="muted" style="padding:22px;text-align:center">Loading matches…</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="space"></div>
-
-    <!-- Selections area (FTP Selections preview inside page) -->
-    <div class="selections" id="selectionsArea" hidden>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <h3 style="margin:0">FTP Selections</h3>
-          <p class="small muted" style="margin:6px 0 0 0">Selected matches (saved locally, and can be pushed to the Back sheet)</p>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn" id="exportSelectionsBtn"><i class="fa-solid fa-file-export"></i> Export</button>
-          <button class="btn secondary" id="closeSelections"><i class="fa-solid fa-times"></i> Close</button>
-        </div>
-      </div>
-      <div style="height:12px"></div>
-      <div id="selectionsList" style="display:grid;gap:8px"></div>
-    </div>
-  </main>
-
-  <!-- modal -->
-  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-header">
-        <div>
-          <div id="modalTeams" style="font-weight:800;font-size:16px"></div>
-          <div id="modalDate" style="font-size:12px;opacity:0.9"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn secondary" id="modalOpenLink"><i class="fa-solid fa-link"></i> Open Link</button>
-          <button class="btn" id="modalClose"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-      </div>
-
-      <div class="modal-body" id="modalBody">
-        <!-- Fields injected dynamically -->
-      </div>
-    </div>
-  </div>
-
-  <!-- floating back -->
-  <div class="floating-back">
-    <a href="https://datacompass360.github.io/forecast2.0/" title="Back to Forecast" id="backAnchor" target="_blank" rel="noopener">
-      <i class="fa-solid fa-arrow-left" style="font-size:18px"></i>
-    </a>
-  </div>
-
-  <!-- toast -->
-  <div id="toast" class="toast"></div>
-
-  <script>
-    /*************************************************************************
-     * FTP.NET — comparison.html
-     * Loads match CSV, provides filtering, analytics, modal details, selections,
-     * and saving to a Back sheet via an Apps Script POST endpoint (user-provided).
-     *
-     * Data source:
-     * MAIN CSV:
-     * https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv
-     *
-     * BACK CSV (read-only, used for duplicate checks):
-     * https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv
-     *
-     * To save selections to the Back sheet, deploy a Google Apps Script Web App
-     * that accepts POST JSON and writes rows. Paste that endpoint into the Apps Script input.
-     *
-     *************************************************************************/
-
-    // CONFIG
-    const MAIN_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5l2Ch6c1Qw-DTzA_kI7xYA1vLkAgBClTWpB__xMwpefIDOIjjsyQZMzd8b35RuJbJyPltls_qUQSE/pub?gid=1966651881&single=true&output=csv';
-    const BACK_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-DYrgAusRDkssVrhqae9bbifsTVF4Qj6rrh1nqGGl9XMnOHCb5J-Y2UQfM5mSMwEW651VJGYSP9Zb/pub?gid=0&single=true&output=csv';
-    // Apps Script endpoint is provided by user in UI (appsScriptUrl input)
-    const appsScriptInput = document.getElementById('appsScriptUrl');
-
-    // app state
-    let rawData = [];       // array of objects from CSV
-    let filteredData = [];  // filtered view
-    let backCsvRows = [];   // rows fetched from Back CSV (for duplicate check)
-    let selections = JSON.parse(localStorage.getItem('ftp_selections_v1') || '[]'); // stored selected rows
-    const tableBody = document.getElementById('tableBody');
-
-    // UI elements
-    const dateFilter = document.getElementById('dateFilter');
-    const teamSearch = document.getElementById('teamSearch');
-    const rowLimit = document.getElementById('rowLimit');
-    const totalMatchesEl = document.getElementById('totalMatches');
-    const predWinsEl = document.getElementById('predWins');
-    const winRateEl = document.getElementById('winRate');
-    const toastEl = document.getElementById('toast');
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalBody = document.getElementById('modalBody');
-    const modalTeams = document.getElementById('modalTeams');
-    const modalDate = document.getElementById('modalDate');
-    const modalOpenLink = document.getElementById('modalOpenLink');
-    const modalClose = document.getElementById('modalClose');
-
-    const selectionsArea = document.getElementById('selectionsArea');
-    const selectionsList = document.getElementById('selectionsList');
-    const viewSelectionsBtn = document.getElementById('viewSelectionsBtn');
-    const closeSelections = document.getElementById('closeSelections');
-    const clearSelectionsBtn = document.getElementById('clearSelectionsBtn');
-    const saveToBackBtn = document.getElementById('saveToBackBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const exportSelectionsBtn = document.getElementById('exportSelectionsBtn');
-
-    const dateFormat = (s) => s; // preserve format from CSV — user can parse differently if needed
-
-    // utility: parse CSV into array of objects (simple)
-    function parseCSV(text){
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      if (!lines.length) return [];
-      const headers = lines[0].split(',').map(h => h.trim());
-      const rows = lines.slice(1).map(line => {
-        // split but keep commas inside quotes safe
-        const cells = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-        const obj = {};
-        for (let i=0;i<headers.length;i++){
-          let v = cells[i] || '';
-          v = v.replace(/^"(.*)"$/, '$1'); // remove surrounding quotes
-          obj[headers[i]] = v;
-        }
-        return obj;
-      });
-      return rows;
-    }
-
-    // Load CSV helper
-    async function fetchCsv(url){
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Network error: ' + res.status);
-        const text = await res.text();
-        return parseCSV(text);
-      } catch (e) {
-        console.error('CSV fetch error', e);
-        showToast('Error loading CSV: ' + e.message, 'error');
-        return [];
+  // Minimal CSV parser (handles commas and quoted values)
+  function parseCsv(csvText) {
+    const lines = csvText.split(/\r?\n/).filter((l) => l.trim() !== "");
+    if (lines.length === 0) return [];
+    const headers = splitCsvLine(lines[0]);
+    const out = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = splitCsvLine(lines[i]);
+      if (cols.length === 0) continue;
+      const obj = {};
+      for (let j = 0; j < headers.length; j++) {
+        obj[headers[j].trim()] = cols[j] ? cols[j].trim() : "";
       }
+      // Normalize some fields and attach derived fields
+      obj.__originalIndex = i - 1;
+      obj.PredictionLabel = parsePredictionFromBox(obj["Box Correct Score"] || "");
+      out.push(obj);
     }
+    return out;
+  }
 
-    // Prediction logic from "Box Correct Score" like "2-1" or "1:1"
-    function computePredictionFromBox(boxScore){
-      if (!boxScore) return 'Undefined';
-      const m = boxScore.match(/(\d+)\s*[-:]\s*(\d+)/);
-      if (!m) return 'Undefined';
-      const h = parseInt(m[1],10), a = parseInt(m[2],10);
-      if (isNaN(h) || isNaN(a)) return 'Undefined';
-      if (h > a) return 'Home';
-      if (h < a) return 'Away';
-      return 'Draw';
-    }
-
-    // Determine if prediction is correct given matchResult text
-    // matchResult expected like "2-1" or "Home 2-1"? We'll try to detect who won by parsing numbers
-    function determineMatchOutcomeFromResult(resultText){
-      if (!resultText) return 'Undefined';
-      const m = resultText.match(/(\d+)\s*[-:]\s*(\d+)/);
-      if (!m) {
-        // fallback: look for words
-        const lower = resultText.toLowerCase();
-        if (lower.includes('home')) return 'Home';
-        if (lower.includes('away')) return 'Away';
-        if (lower.includes('draw')) return 'Draw';
-        return 'Undefined';
+  function splitCsvLine(line) {
+    const result = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        continue;
       }
-      const h = parseInt(m[1],10), a = parseInt(m[2],10);
-      if (h > a) return 'Home';
-      if (h < a) return 'Away';
-      return 'Draw';
-    }
-
-    // compute and attach prediction and correctness to each row
-    function enrichRows(rows){
-      return rows.map(r => {
-        const box = r['Box Correct Score'] || r['BoxCorrectScore'] || r['box_correct_score'] || r['box correct score'] || '';
-        const pred = computePredictionFromBox(box);
-        const matchResult = r['Match Result'] || r['MatchResult'] || r['match result'] || r['result'] || '';
-        const outcome = determineMatchOutcomeFromResult(matchResult);
-        const isCorrect = (pred !== 'Undefined' && outcome !== 'Undefined') ? (pred === outcome) : null;
-        return {...r, __box: box, __prediction: pred, __matchOutcome: outcome, __isCorrect: isCorrect};
-      });
-    }
-
-    // populate date dropdown from distinct Match Date column
-    function populateDateFilter(rows){
-      const dateCol = 'Match Date';
-      const set = new Set(rows.map(r => r[dateCol] || r['date'] || '').filter(Boolean));
-      const dates = Array.from(set).sort((a,b)=> {
-        // try ISO or fall back to string
-        const ta = Date.parse(a), tb = Date.parse(b);
-        if (!isNaN(ta) && !isNaN(tb)) return ta - tb;
-        return a.localeCompare(b);
-      });
-      // reset
-      dateFilter.innerHTML = '<option value="all">All Dates</option>';
-      dates.forEach(d => {
-        const opt = document.createElement('option');
-        opt.value = d;
-        opt.textContent = dateFormat(d);
-        dateFilter.appendChild(opt);
-      });
-    }
-
-    // animate number from 0 to target
-    function animateNumber(el, target, suffix=''){
-      const start = 0;
-      const duration = 700;
-      const startTime = performance.now();
-      function step(now){
-        const t = Math.min(1, (now - startTime) / duration);
-        const cur = Math.floor(start + (target - start)*t);
-        el.textContent = cur + suffix;
-        if (t < 1) requestAnimationFrame(step);
+      if (ch === "," && !inQuotes) {
+        result.push(cur);
+        cur = "";
+        continue;
       }
-      requestAnimationFrame(step);
+      cur += ch;
     }
+    result.push(cur);
+    return result;
+  }
 
-    // compute summary metrics
-    function computeSummary(rows){
-      const total = rows.length;
-      const wins = rows.filter(r => r.__isCorrect === true).length;
-      const winRate = total ? Math.round((wins/total)*100) : 0;
-      animateNumber(totalMatchesEl, total);
-      animateNumber(predWinsEl, wins);
-      animateNumber(winRateEl, winRate, '%');
-    }
+  function parsePredictionFromBox(box) {
+    if (!box) return "";
+    // assume box like "2-1" or maybe contains whitespace
+    const m = box.match(/(\d+)\s*-\s*(\d+)/);
+    if (!m) return "";
+    const h = parseInt(m[1], 10);
+    const a = parseInt(m[2], 10);
+    if (h > a) return "Home";
+    if (h === a) return "Draw";
+    return "Away";
+  }
 
-    // Render table rows given filteredData
-    function renderTable(rows){
-      tableBody.innerHTML = '';
-      if (!rows.length) {
-        tableBody.innerHTML = '<tr><td colspan="12" class="muted" style="padding:22px;text-align:center">No matches found</td></tr>';
-        return;
-      }
+  function parseResultToLabel(result) {
+    if (!result) return "";
+    const m = (result + "").match(/(\d+)\s*-\s*(\d+)/);
+    if (!m) return "";
+    const h = parseInt(m[1], 10);
+    const a = parseInt(m[2], 10);
+    if (h > a) return "Home";
+    if (h === a) return "Draw";
+    return "Away";
+  }
 
-      const limit = rowLimit.value === 'all' ? Infinity : parseInt(rowLimit.value,10);
-      let count = 0;
-      for (const r of rows) {
-        if (count >= limit) break;
-        count++;
-        const tr = document.createElement('tr');
-        tr.classList.add(r.__isCorrect === true ? 'row-correct' : r.__isCorrect === false ? 'row-wrong' : 'row-neutral');
+  // Dynamic dropdown data
+  const matchDates = useMemo(() => {
+    const setDates = new Set(rows.map((r) => r["Match Date"]).filter(Boolean));
+    return [...setDates].sort();
+  }, [rows]);
 
-        const dateTd = document.createElement('td'); dateTd.textContent = r['Match Date'] || r['date'] || '';
-        const homeTd = document.createElement('td'); homeTd.textContent = r['Home Team'] || r['Home'] || r['home'] || '';
-        const awayTd = document.createElement('td'); awayTd.textContent = r['Away Team'] || r['Away'] || r['away'] || '';
-        const boxTd = document.createElement('td'); boxTd.textContent = r.__box || '';
-        const hAvgScored = document.createElement('td'); hAvgScored.textContent = r['Home Avg Goals Scored'] || r['Home Avg Goals Scored '] || r['HomeAvgGoalsScored'] || r['Hteam Avg Scored'] || '';
-        const hAvgConceded = document.createElement('td'); hAvgConceded.textContent = r['Home Avg Goals Conceded'] || r['Hteam Avg Conceded'] || '';
-        const aAvg1stScored = document.createElement('td'); aAvg1stScored.textContent = r['Away Avg Time 1st Goal Scored'] || r['Away Avg Time 1st Goal Scored '] || r['Ateam Avg Time 1st Goal Scored'] || '';
-        const aAvg1stConceded = document.createElement('td'); aAvg1stConceded.textContent = r['Away Avg Time 1st Goal Conceded'] || r['Away Avg Time 1st Goal Conceded '] || r['Ateam Avg Time 1st Goal Conceded'] || '';
-        const resultTd = document.createElement('td'); resultTd.textContent = r['Match Result'] || r['Result'] || r['MatchResult'] || '';
+  const boxScores = useMemo(() => {
+    const setScores = new Set(rows.map((r) => r["Box Correct Score"]).filter(Boolean));
+    return [...setScores].sort();
+  }, [rows]);
 
-        const predTd = document.createElement('td');
-        const pill = document.createElement('span');
-        pill.classList.add('pill');
-        if (r.__prediction === 'Home'){ pill.classList.add('pred-home'); pill.textContent = 'Home'; }
-        else if (r.__prediction === 'Away'){ pill.classList.add('pred-away'); pill.textContent = 'Away'; }
-        else if (r.__prediction === 'Draw'){ pill.classList.add('pred-draw'); pill.textContent = 'Draw'; }
-        else { pill.classList.add('pred-draw'); pill.textContent = '—'; }
-        predTd.appendChild(pill);
+  // Helper to safely get numeric fields that may be named differently in sheet
+  function num(r, key) {
+    const v = r[key];
+    if (!v) return 0;
+    const n = parseFloat((v + "").replace(/[^\d.\-]/g, ""));
+    return isNaN(n) ? 0 : n;
+  }
 
-        // view button
-        const viewTd = document.createElement('td'); viewTd.style.textAlign = 'right';
-        const viewBtn = document.createElement('button'); viewBtn.className = 'icon-btn'; viewBtn.title = 'View details';
-        viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
-        viewBtn.addEventListener('click', ()=> openModal(r));
-        viewTd.appendChild(viewBtn);
-
-        // select button
-        const selTd = document.createElement('td'); selTd.style.textAlign = 'right';
-        const selBtn = document.createElement('button'); selBtn.className = 'btn secondary'; selBtn.title = 'Select match';
-        selBtn.innerHTML = '<i class="fa-solid fa-plus"></i>&nbsp;Select';
-        selBtn.addEventListener('click', ()=> toggleSelect(r));
-        selTd.appendChild(selBtn);
-
-        tr.appendChild(dateTd);
-        tr.appendChild(homeTd);
-        tr.appendChild(awayTd);
-        tr.appendChild(boxTd);
-        tr.appendChild(hAvgScored);
-        tr.appendChild(hAvgConceded);
-        tr.appendChild(aAvg1stScored);
-        tr.appendChild(aAvg1stConceded);
-        tr.appendChild(resultTd);
-        tr.appendChild(predTd);
-        tr.appendChild(viewTd);
-        tr.appendChild(selTd);
-
-        tableBody.appendChild(tr);
-      }
-    }
-
-    // filtering pipeline
-    function applyFilters(){
-      const dateVal = dateFilter.value;
-      const query = (teamSearch.value || '').trim().toLowerCase();
-      const rows = rawData.map(r => ({...r})); // clone
-      let out = enrichRows(rows);
-
-      if (dateVal && dateVal !== 'all'){
-        out = out.filter(r => (r['Match Date'] || r['date'] || '') === dateVal);
-      }
-      if (query){
-        out = out.filter(r => {
-          const h = (r['Home Team'] || r['Home'] || r['home'] || '').toLowerCase();
-          const a = (r['Away Team'] || r['Away'] || r['away'] || '').toLowerCase();
-          return h.includes(query) || a.includes(query);
-        });
-      }
-
-      filteredData = out;
-      computeSummary(filteredData);
-      renderTable(filteredData);
-    }
-
-    // modal open
-    function openModal(row){
-      modalBackdrop.classList.add('open');
-      modalTeams.textContent = `${row['Home Team'] || row['Home'] || ''}  —  ${row['Away Team'] || row['Away'] || ''}`;
-      modalDate.textContent = row['Match Date'] || row['date'] || '';
-      modalOpenLink.onclick = () => {
-        const link = row['Match Link'] || row['Link'] || row['match link'] || '';
-        if (link) window.open(link,'_blank');
-        else showToast('No match link available', 'error');
-      };
-
-      // populate fields organized in 3 columns
-      modalBody.innerHTML = '';
-      const fields = [
-        {k:'Match Link', label:'Match Link'},
-        {k:'Home Form', label:'Home Form'},
-        {k:'Home Wins', label:'Home Wins'},
-        {k:'Away Form', label:'Away Form'},
-        {k:'Away Wins', label:'Away Wins'},
-        {k:'H2H Home Wins', label:'H2H Home Wins'},
-        {k:'H2H Away Wins', label:'H2H Away Wins'},
-        {k:'H2H Draws', label:'H2H Draws'},
-        {k:'Home Table Pos', label:'Home Table Pos'},
-        {k:'Away Table Pos', label:'Away Table Pos'},
-        {k:'Home Avg Goals Scored', label:'Home Avg Goals Scored'},
-        {k:'Home Avg Goals Conceded', label:'Home Avg Goals Conceded'},
-        {k:'Home Avg Time 1st Goal Scored', label:'Home Avg Time 1st Goal Scored'},
-        {k:'Home Avg Time 1st Goal Conceded', label:'Home Avg Time 1st Goal Conceded'},
-        {k:'Home Avg Yellow Cards', label:'Home Avg Yellow Cards'},
-        {k:'Home Avg Red Cards', label:'Home Avg Red Cards'},
-        {k:'Home Avg Subs Used', label:'Home Avg Subs Used'},
-        {k:'Home Biggest Victory', label:'Home Biggest Victory'},
-        {k:'Home Biggest Defeat', label:'Home Biggest Defeat'},
-        {k:'Away Avg Goals Scored', label:'Away Avg Goals Scored'},
-        {k:'Away Avg Goals Conceded', label:'Away Avg Goals Conceded'},
-        {k:'Away Avg Time 1st Goal Scored', label:'Away Avg Time 1st Goal Scored'},
-        {k:'Away Avg Time 1st Goal Conceded', label:'Away Avg Time 1st Goal Conceded'},
-        {k:'Away Avg Yellow Cards', label:'Away Avg Yellow Cards'},
-        {k:'Away Avg Red Cards', label:'Away Avg Red Cards'},
-        {k:'Away Avg Subs Used', label:'Away Avg Subs Used'},
-        {k:'Away Biggest Victory', label:'Away Biggest Victory'},
-        {k:'Away Biggest Defeat', label:'Away Biggest Defeat'},
-      ];
-
-      fields.forEach(f=>{
-        const key = f.k;
-        const val = row[key] || row[key.replace(/\s+/g,'')] || row[key.toLowerCase()] || '';
-        const el = document.createElement('div');
-        el.className = 'field';
-        el.innerHTML = `<h4>${f.label}</h4><p>${val}</p>`;
-        modalBody.appendChild(el);
-      });
-    }
-
-    modalClose.addEventListener('click', ()=> modalBackdrop.classList.remove('open'));
-    modalBackdrop.addEventListener('click', (e)=>{
-      if (e.target === modalBackdrop) modalBackdrop.classList.remove('open');
+  // Build the filtered dataset
+  const filtered = useMemo(() => {
+    let data = rows.slice();
+    if (matchDate) data = data.filter((r) => r["Match Date"] === matchDate);
+    if (boxScore) data = data.filter((r) => (r["Box Correct Score"] || "").includes(boxScore));
+    // Home Wins (counted) -> we assume there's a column named 'Home Wins' or 'Home_Wins' or we try to compute
+    data = data.filter((r) => {
+      const hWins = num(r, "Home Wins") || num(r, "Home_Wins") || 0;
+      return hWins >= homeWinsMin && hWins <= homeWinsMax;
     });
-
-    // selections management
-    function toggleSelect(row){
-      const key = selectionKeyForRow(row);
-      const idx = selections.findIndex(s => selectionKeyForRow(s) === key);
-      if (idx === -1){
-        // add, enforce 30 limit
-        if (selections.length >= 30) {
-          showToast('Selection limit (30) reached. Remove some before adding.', 'error');
-          return;
-        }
-        selections.push(row);
-        saveSelectionsToLocal();
-        showToast('Added to FTP Selections', 'success');
-      } else {
-        selections.splice(idx,1);
-        saveSelectionsToLocal();
-        showToast('Removed from FTP Selections', 'success');
-      }
-      renderSelections();
+    data = data.filter((r) => {
+      const aWins = num(r, "Away Wins") || num(r, "Away_Wins") || 0;
+      return aWins >= awayWinsMin && aWins <= awayWinsMax;
+    });
+    if (search) {
+      const s = search.toLowerCase();
+      data = data.filter((r) => (r["Home Team"] || "").toLowerCase().includes(s) || (r["Away Team"] || "").toLowerCase().includes(s));
     }
+    return data;
+  }, [rows, matchDate, boxScore, homeWinsMin, homeWinsMax, awayWinsMin, awayWinsMax, search]);
 
-    function selectionKeyForRow(r){
-      return ((r['Match Date']||'') + '|' + (r['Home Team']||r['Home']||'') + '|' + (r['Away Team']||r['Away']||'') + '|' + (r.__box || ''));
+  // Cards
+  const totalMatches = filtered.length;
+  const matchesWon = useMemo(() => {
+    return filtered.filter((r) => {
+      const pred = r.PredictionLabel;
+      const actual = parseResultToLabel(r["Match Result"]);
+      return pred && actual && pred === actual;
+    }).length;
+  }, [filtered]);
+  const pctWon = totalMatches === 0 ? 0 : Math.round((matchesWon / totalMatches) * 1000) / 10;
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages]);
+
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function toggleSelectRow(row) {
+    const exists = selectedRows.find((r) => r.__originalIndex === row.__originalIndex);
+    if (exists) {
+      setSelectedRows(selectedRows.filter((r) => r.__originalIndex !== row.__originalIndex));
+    } else {
+      setSelectedRows([...selectedRows, row]);
     }
+  }
 
-    function saveSelectionsToLocal(){
-      localStorage.setItem('ftp_selections_v1', JSON.stringify(selections));
+  function clearSelections() {
+    setSelectedRows([]);
+  }
+
+  function downloadSelectionsCsv() {
+    if (selectedRows.length === 0) return;
+    // Create CSV from selectedRows using headers from first row
+    const headers = Object.keys(selectedRows[0]).filter((k) => !k.startsWith("__"));
+    const lines = [headers.join(",")];
+    for (const r of selectedRows) {
+      const row = headers.map((h) => {
+        const v = r[h] ? ("" + r[h]).replace(/"/g, '""') : "";
+        return `"${v}"`;
+      });
+      lines.push(row.join(","));
     }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ftp_selections.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
-    function renderSelections(){
-      selectionsList.innerHTML = '';
-      if (!selections.length) {
-        selectionsList.innerHTML = '<div class="muted">No selections yet</div>';
-        return;
-      }
-      // list each selection as a horizontal card
-      selections.forEach((s, idx)=>{
-        const wrapper = document.createElement('div');
-        wrapper.style.display='flex';
-        wrapper.style.alignItems='center';
-        wrapper.style.justifyContent='space-between';
-        wrapper.style.padding='10px';
-        wrapper.style.borderRadius='10px';
-        wrapper.style.background='linear-gradient(90deg,#fff,#fbfdff)';
-        wrapper.style.boxShadow='0 8px 18px rgba(17,17,17,0.04)';
-        wrapper.innerHTML = `
-          <div style="display:flex;gap:12px;align-items:center">
-            <div style="width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#f1f7ff,#e8f2ff);display:grid;place-items:center;font-weight:700">${idx+1}</div>
+  async function trySaveToGooglePublishUrl() {
+    // NOTE: Published CSV URLs are read-only and do not accept writes from the browser (CORS + no API endpoint).
+    // We'll attempt a POST (which will almost certainly fail). If it fails, inform the user and fallback to downloadable CSV.
+    try {
+      const payload = JSON.stringify({ rows: selectedRows });
+      const res = await fetch(FTP_SAVE_CSV_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+      if (!res.ok) throw new Error(`Save failed: ${res.status}`);
+      alert("Saved successfully (note: this is unlikely for published CSV URLs — verify in your sheet). If you need server-side saving, use an Apps Script or a writable endpoint.");
+    } catch (e) {
+      alert(
+        "Unable to save directly to the published Google Sheets CSV. This URL is read-only from the browser due to CORS and because published CSVs do not accept POST.\n\nFallback: We'll download the selections as a CSV to your computer. To integrate direct saving, create a Google Apps Script web app or a server endpoint that accepts POST requests and write to the sheet."
+      );
+      downloadSelectionsCsv();
+    }
+  }
+
+  // Small helpers for row styling
+  function rowOutcomeClass(r) {
+    const pred = r.PredictionLabel;
+    const actual = parseResultToLabel(r["Match Result"]);
+    if (!pred || !actual) return "";
+    return pred === actual ? "bg-green-50" : "bg-red-50";
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <a
+              href="https://datacompass360.github.io/forecast2.0/"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md shadow hover:shadow-lg bg-white"
+            >
+              <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M15 18l-6-6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Back
+            </a>
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-800">FTP.NET</h1>
+            <div className="text-sm text-gray-500">Fetches predictions from Google Sheets · Responsive dashboard</div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectionsTab((s) => !s);
+              }}
+              className="px-3 py-2 rounded-md shadow bg-blue-50 hover:bg-blue-100"
+            >
+              {selectionsTab ? "View FTP.NET" : "View FTP Selections"}
+            </button>
+            <button
+              onClick={() => {
+                fetchCsv();
+              }}
+              className="px-3 py-2 rounded-md shadow bg-white hover:bg-gray-50"
+            >
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        {/* Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <div className="text-sm">Total Matches</div>
+            <div className="text-2xl font-bold">{totalMatches}</div>
+            <div className="text-xs opacity-80 mt-1">Matches loaded after filters</div>
+          </div>
+
+          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <div className="text-sm">Matches Won</div>
+            <div className="text-2xl font-bold">{matchesWon}</div>
+            <div className="text-xs opacity-80 mt-1">Predictions that matched Match Result</div>
+          </div>
+
+          <div className="p-4 rounded-2xl shadow-md bg-gradient-to-r from-blue-500 to-green-500 text-white">
+            <div className="text-sm">Percentage Won</div>
+            <div className="text-2xl font-bold">{pctWon}%</div>
+            <div className="text-xs opacity-80 mt-1">Based on current filters</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white p-4 rounded-xl shadow mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <div style="font-weight:700">${s['Home Team'] || s['Home'] || ''} vs ${s['Away Team'] || s['Away'] || ''}</div>
-              <div class="small muted">${s['Match Date'] || s['date'] || ''} • ${s.__box || ''}</div>
+              <label className="block text-xs font-medium text-gray-600">Match Date</label>
+              <select
+                value={matchDate}
+                onChange={(e) => setMatchDate(e.target.value)}
+                className="mt-1 block w-full p-2 border rounded-md"
+              >
+                <option value="">All Dates</option>
+                {matchDates.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Box Correct Score</label>
+              <select
+                value={boxScore}
+                onChange={(e) => setBoxScore(e.target.value)}
+                className="mt-1 block w-full p-2 border rounded-md"
+              >
+                <option value="">All</option>
+                {boxScores.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Home Wins (min / max)</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="number"
+                  className="p-2 border rounded w-1/2"
+                  value={homeWinsMin}
+                  onChange={(e) => setHomeWinsMin(Number(e.target.value))}
+                />
+                <input
+                  type="number"
+                  className="p-2 border rounded w-1/2"
+                  value={homeWinsMax}
+                  onChange={(e) => setHomeWinsMax(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Away Wins (min / max)</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="number"
+                  className="p-2 border rounded w-1/2"
+                  value={awayWinsMin}
+                  onChange={(e) => setAwayWinsMin(Number(e.target.value))}
+                />
+                <input
+                  type="number"
+                  className="p-2 border rounded w-1/2"
+                  value={awayWinsMax}
+                  onChange={(e) => setAwayWinsMax(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-gray-600">Search Teams</label>
+              <input
+                placeholder="Search Home or Away team"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="mt-1 block w-full p-2 border rounded-md"
+              />
+            </div>
+
+            <div className="flex items-end gap-2">
+              <button
+                onClick={() => {
+                  setMatchDate("");
+                  setBoxScore("");
+                  setHomeWinsMin(0);
+                  setHomeWinsMax(999);
+                  setAwayWinsMin(0);
+                  setAwayWinsMax(999);
+                  setSearch("");
+                }}
+                className="px-3 py-2 rounded-md bg-white shadow"
+              >
+                Reset
+              </button>
+              <div className="text-sm text-gray-500 self-center">{filtered.length} results</div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn secondary small" title="Remove" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+        </div>
+
+        {/* Main content: either FTP.NET table or FTP Selections */}
+        {!selectionsTab ? (
+          <section>
+            <div className="overflow-x-auto bg-white rounded-xl shadow">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-blue-900 text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm">Match Date</th>
+                    <th className="px-4 py-3 text-left text-sm">Home Team</th>
+                    <th className="px-4 py-3 text-left text-sm">Away Team</th>
+                    <th className="px-4 py-3 text-left text-sm">Box Correct Score</th>
+                    <th className="px-4 py-3 text-left text-sm">Home Avg Goals Scored</th>
+                    <th className="px-4 py-3 text-left text-sm">Home Avg Goals Conceded</th>
+                    <th className="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Scored</th>
+                    <th className="px-4 py-3 text-left text-sm">Away Avg Time 1st Goal Conceded</th>
+                    <th className="px-4 py-3 text-left text-sm">Match Result</th>
+                    <th className="px-4 py-3 text-left text-sm">Prediction</th>
+                    <th className="px-4 py-3 text-left text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {loading && (
+                    <tr>
+                      <td colSpan={11} className="p-6 text-center text-gray-500">
+                        Loading...
+                      </td>
+                    </tr>
+                  )}
+
+                  {!loading && pageRows.length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="p-6 text-center text-gray-500">
+                        No matches found
+                      </td>
+                    </tr>
+                  )}
+
+                  {pageRows.map((r, idx) => {
+                    const rowClass = rowOutcomeClass(r);
+                    const isSelected = selectedRows.some((s) => s.__originalIndex === r.__originalIndex);
+                    return (
+                      <tr key={r.__originalIndex} className={`${rowClass} hover:bg-gray-50`}>
+                        <td className="px-4 py-3 text-sm">{r["Match Date"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Home Team"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Away Team"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Box Correct Score"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Home Avg Goals Scored"] || r["Home_Avg_Goals_Scored"] || ""}</td>
+                        <td className="px-4 py-3 text-sm">{r["Home Avg Goals Conceded"] || r["Home_Avg_Goals_Conceded"] || ""}</td>
+                        <td className="px-4 py-3 text-sm">{r["Away Avg Time 1st Goal Scored"] || r["Away_Avg_Time_1st_Goal_Scored"] || ""}</td>
+                        <td className="px-4 py-3 text-sm">{r["Away Avg Time 1st Goal Conceded"] || r["Away_Avg_Time_1st_Goal_Conceded"] || ""}</td>
+                        <td className="px-4 py-3 text-sm">{r["Match Result"]}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`inline-block px-2 py-1 rounded ${r.PredictionLabel === "Home" ? "bg-blue-100" : r.PredictionLabel === "Draw" ? "bg-yellow-100" : "bg-red-100"}`}>
+                            {r.PredictionLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm flex gap-2">
+                          <button
+                            onClick={() => setViewRow(r)}
+                            className="px-2 py-1 rounded bg-white shadow hover:bg-gray-50"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => toggleSelectRow(r)}
+                            className={`px-2 py-1 rounded shadow ${isSelected ? "bg-green-100" : "bg-white"}`}
+                          >
+                            {isSelected ? "Selected" : "Select"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination controls */}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setPage(1)} disabled={page === 1} className="px-3 py-2 rounded bg-white shadow">
+                  First
+                </button>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-2 rounded bg-white shadow">
+                  Prev
+                </button>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-2 rounded bg-white shadow">
+                  Next
+                </button>
+                <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="px-3 py-2 rounded bg-white shadow">
+                  Last
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section>
+            <div className="bg-white rounded-xl shadow p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold">FTP Selections</h2>
+                <div className="flex gap-2">
+                  <button onClick={downloadSelectionsCsv} className="px-3 py-2 rounded bg-blue-600 text-white shadow">
+                    Download CSV
+                  </button>
+                  <button onClick={trySaveToGooglePublishUrl} className="px-3 py-2 rounded bg-green-600 text-white shadow">
+                    Save to Google (attempt)
+                  </button>
+                  <button onClick={clearSelections} className="px-3 py-2 rounded bg-red-500 text-white shadow">
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-blue-900 text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm">Match Date</th>
+                      <th className="px-4 py-3 text-left text-sm">Home Team</th>
+                      <th className="px-4 py-3 text-left text-sm">Away Team</th>
+                      <th className="px-4 py-3 text-left text-sm">Box Correct Score</th>
+                      <th className="px-4 py-3 text-left text-sm">Match Result</th>
+                      <th className="px-4 py-3 text-left text-sm">Prediction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedRows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-gray-500">
+                          No selections yet
+                        </td>
+                      </tr>
+                    )}
+                    {selectedRows.map((r) => (
+                      <tr key={r.__originalIndex} className={`${rowOutcomeClass(r)} hover:bg-gray-50`}>
+                        <td className="px-4 py-3 text-sm">{r["Match Date"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Home Team"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Away Team"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Box Correct Score"]}</td>
+                        <td className="px-4 py-3 text-sm">{r["Match Result"]}</td>
+                        <td className="px-4 py-3 text-sm">{r.PredictionLabel}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Modal for viewing a row */}
+        {viewRow && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black opacity-25" onClick={() => setViewRow(null)} />
+            <div className="relative max-w-4xl w-full bg-white rounded-xl shadow-lg overflow-auto p-6">
+              <div className="flex items-start justify-between">
+                <h3 className="text-xl font-semibold">Match Detail</h3>
+                <div className="flex gap-2">
+                  {viewRow["Match Link"] ? (
+                    <a href={viewRow["Match Link"]} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded bg-blue-600 text-white">
+                      Match Link
+                    </a>
+                  ) : null}
+                  <button onClick={() => setViewRow(null)} className="px-3 py-2 rounded bg-gray-100">
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="p-4 border rounded">
+                  <h4 className="font-semibold">Home Stats</h4>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li><strong>Home Form:</strong> {viewRow["Home Form"] || viewRow["Home_Form"] || ""}</li>
+                    <li><strong>Home Wins:</strong> {viewRow["Home Wins"] || viewRow["Home_Wins"] || ""}</li>
+                    <li><strong>H2H Home Wins:</strong> {viewRow["H2H Home Wins"] || viewRow["H2H_Home_Wins"] || ""}</li>
+                    <li><strong>Home Table Pos:</strong> {viewRow["Home Table Pos"] || viewRow["Home_Table_Pos"] || ""}</li>
+                    <li><strong>Home Avg Goals Scored:</strong> {viewRow["Home Avg Goals Scored"] || viewRow["Home_Avg_Goals_Scored"] || ""}</li>
+                    <li><strong>Home Avg Goals Conceded:</strong> {viewRow["Home Avg Goals Conceded"] || viewRow["Home_Avg_Goals_Conceded"] || ""}</li>
+                    <li><strong>Home Avg Time 1st Goal Scored:</strong> {viewRow["Home Avg Time 1st Goal Scored"] || viewRow["Home_Avg_Time_1st_Goal_Scored"] || ""}</li>
+                    <li><strong>Home Avg Yellow Cards:</strong> {viewRow["Home Avg Yellow Cards"] || viewRow["Home_Avg_Yellow_Cards"] || ""}</li>
+                    <li><strong>Home Avg Red Cards:</strong> {viewRow["Home Avg Red Cards"] || viewRow["Home_Avg_Red_Cards"] || ""}</li>
+                    <li><strong>Home Avg Subs Used:</strong> {viewRow["Home Avg Subs Used"] || viewRow["Home_Avg_Subs_Used"] || ""}</li>
+                    <li><strong>Home Biggest Victory:</strong> {viewRow["Home Biggest Victory"] || viewRow["Home_Biggest_Victory"] || ""}</li>
+                    <li><strong>Home Biggest Defeat:</strong> {viewRow["Home Biggest Defeat"] || viewRow["Home_Biggest_Defeat"] || ""}</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border rounded">
+                  <h4 className="font-semibold">Away Stats</h4>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li><strong>Away Form:</strong> {viewRow["Away Form"] || viewRow["Away_Form"] || ""}</li>
+                    <li><strong>Away Wins:</strong> {viewRow["Away Wins"] || viewRow["Away_Wins"] || ""}</li>
+                    <li><strong>H2H Away Wins:</strong> {viewRow["H2H Away Wins"] || viewRow["H2H_Away_Wins"] || ""}</li>
+                    <li><strong>H2H Draws:</strong> {viewRow["H2H Draws"] || viewRow["H2H_Draws"] || ""}</li>
+                    <li><strong>Away Table Pos:</strong> {viewRow["Away Table Pos"] || viewRow["Away_Table_Pos"] || ""}</li>
+                    <li><strong>Away Avg Goals Scored:</strong> {viewRow["Away Avg Goals Scored"] || viewRow["Away_Avg_Goals_Scored"] || ""}</li>
+                    <li><strong>Away Avg Goals Conceded:</strong> {viewRow["Away Avg Goals Conceded"] || viewRow["Away_Avg_Goals_Conceded"] || ""}</li>
+                    <li><strong>Away Avg Time 1st Goal Scored:</strong> {viewRow["Away Avg Time 1st Goal Scored"] || viewRow["Away_Avg_Time_1st_Goal_Scored"] || ""}</li>
+                    <li><strong>Away Avg Yellow Cards:</strong> {viewRow["Away Avg Yellow Cards"] || viewRow["Away_Avg_Yellow_Cards"] || ""}</li>
+                    <li><strong>Away Avg Red Cards:</strong> {viewRow["Away Avg Red Cards"] || viewRow["Away_Avg_Red_Cards"] || ""}</li>
+                    <li><strong>Away Avg Subs Used:</strong> {viewRow["Away Avg Subs Used"] || viewRow["Away_Avg_Subs_Used"] || ""}</li>
+                    <li><strong>Away Biggest Victory:</strong> {viewRow["Away Biggest Victory"] || viewRow["Away_Biggest_Victory"] || ""}</li>
+                    <li><strong>Away Biggest Defeat:</strong> {viewRow["Away Biggest Defeat"] || viewRow["Away_Biggest_Defeat"] || ""}</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  onClick={() => {
+                    toggleSelectRow(viewRow);
+                    setViewRow(null);
+                  }}
+                  className="px-4 py-2 rounded bg-green-600 text-white shadow"
+                >
+                  Select this Match
+                </button>
+              </div>
+            </div>
           </div>
-        `;
-        selectionsList.appendChild(wrapper);
-        wrapper.querySelector('button').addEventListener('click', (e)=>{
-          const i = parseInt(e.currentTarget.getAttribute('data-idx'),10);
-          selections.splice(i,1);
-          saveSelectionsToLocal();
-          renderSelections();
-        });
-      });
-    }
+        )}
 
-    // show/hide selections area
-    viewSelectionsBtn.addEventListener('click', ()=>{
-      selectionsArea.hidden = false;
-      renderSelections();
-    });
-    closeSelections.addEventListener('click', ()=>{
-      selectionsArea.hidden = true;
-    });
-
-    clearSelectionsBtn.addEventListener('click', ()=>{
-      if (!confirm('Clear all FTP Selections locally?')) return;
-      selections = [];
-      saveSelectionsToLocal();
-      renderSelections();
-      showToast('Selections cleared', 'success');
-    });
-
-    exportSelectionsBtn.addEventListener('click', ()=>{
-      if (!selections.length) { showToast('No selections to export', 'error'); return; }
-      const csv = toCsv(selections);
-      downloadString(csv, 'ftp_selections.csv', 'text/csv');
-      showToast('Selections exported', 'success');
-    });
-
-    // fetch back csv for duplicate checking
-    async function loadBackCsv(){
-      try {
-        const rows = await fetchCsv(BACK_CSV_URL);
-        backCsvRows = rows;
-      } catch(e){
-        backCsvRows = [];
-      }
-    }
-
-    // Save to Back sheet: 1) check duplicates using BACK_CSV_URL; 2) POST to supplied Apps Script
-    async function saveSelectionsToBack(){
-      const endpoint = (appsScriptInput.value || '').trim();
-      if (!endpoint) { showToast('Paste your Apps Script POST endpoint first', 'error'); return; }
-      if (!selections.length) { showToast('No selections to save', 'error'); return; }
-
-      // fetch Back CSV to find existing entries
-      await loadBackCsv();
-
-      // duplicate check on (Match Date, Home Team, Away Team, Box Correct Score)
-      const existingKeys = new Set(backCsvRows.map(r => {
-        const date = r['Match Date'] || r['date'] || '';
-        const home = r['Home Team'] || r['Home'] || '';
-        const away = r['Away Team'] || r['Away'] || '';
-        const box = r['Box Correct Score'] || r['BoxCorrectScore'] || r['box_correct_score'] || r['box correct score'] || '';
-        return `${date}|${home}|${away}|${box}`;
-      }));
-
-      const toSave = [];
-      const duplicates = [];
-      for (const s of selections){
-        const key = `${s['Match Date']||''}|${s['Home Team']||s['Home']||''}|${s['Away Team']||s['Away']||''}|${s.__box||''}`;
-        if (existingKeys.has(key)) duplicates.push(s);
-        else toSave.push(s);
-      }
-
-      if (!toSave.length){
-        showToast('All selected rows are duplicates in Back sheet. Nothing to save.', 'error');
-        return;
-      }
-
-      // Send POST to Apps Script endpoint with array payload
-      try {
-        // payload format: {rows: [{...}], timestamp: ...}
-        const payload = { rows: toSave, timestamp: new Date().toISOString() };
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) throw new Error('Save failed: ' + res.status);
-        const respJson = await res.json().catch(()=>({success:true}));
-        // success
-        showToast('Saved '+toSave.length+' rows to Back sheet', 'success');
-
-        // Optionally remove saved ones from selections (we'll remove them)
-        selections = selections.filter(s => {
-          const key = `${s['Match Date']||''}|${s['Home Team']||s['Home']||''}|${s['Away Team']||s['Away']||''}|${s.__box||''}`;
-          return !existingKeys.has(key);
-        });
-        saveSelectionsToLocal();
-        renderSelections();
-
-        // reload back csv
-        loadBackCsv();
-
-      } catch (e){
-        console.error(e);
-        showToast('Error saving to Back: ' + e.message, 'error');
-      }
-    }
-
-    saveToBackBtn.addEventListener('click', saveSelectionsToBack);
-
-    // helper: create CSV text from array of objects (preserve headers present in first obj)
-    function toCsv(arr){
-      if (!arr.length) return '';
-      const headers = Object.keys(arr[0]).filter(k=>!k.startsWith('__'));
-      const lines = [];
-      lines.push(headers.join(','));
-      arr.forEach(r=>{
-        const row = headers.map(h => {
-          let v = r[h] || '';
-          if (typeof v === 'string' && v.includes(',')) v = `"${v.replace(/"/g,'""')}"`;
-          return v;
-        }).join(',');
-        lines.push(row);
-      });
-      return lines.join('\n');
-    }
-
-    // download helper
-    function downloadString(str, filename, type='text/plain'){
-      const blob = new Blob([str], {type});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    }
-
-    // export visible table
-    exportBtn.addEventListener('click', ()=>{
-      if (!filteredData.length) { showToast('No rows to export', 'error'); return; }
-      const limit = rowLimit.value === 'all' ? filteredData.length : parseInt(rowLimit.value,10);
-      const slice = filteredData.slice(0, limit).map(r => {
-        // remove internal fields
-        const copy = {...r};
-        delete copy.__prediction; delete copy.__isCorrect; delete copy.__matchOutcome; delete copy.__box;
-        return copy;
-      });
-      const csv = toCsv(slice);
-      downloadString(csv, 'ftp_net_export.csv', 'text/csv');
-      showToast('CSV exported', 'success');
-    });
-
-    // toast helper
-    function showToast(message, type='success'){
-      toastEl.textContent = message;
-      toastEl.className = 'toast show';
-      if (type === 'success') toastEl.style.background = 'linear-gradient(90deg,var(--emerald), #00e081)';
-      else toastEl.style.background = 'linear-gradient(90deg,var(--signal-red), #ff6b5b)';
-      setTimeout(()=>{ toastEl.className = 'toast'; }, 3000);
-    }
-
-    // dark mode toggle
-    const toggleDarkBtn = document.getElementById('toggleDarkBtn');
-    toggleDarkBtn.addEventListener('click', ()=>{
-      document.documentElement.classList.toggle('dark');
-    });
-
-    // row limit / filters events
-    dateFilter.addEventListener('change', applyFilters);
-    teamSearch.addEventListener('input', debounce(applyFilters, 240));
-    rowLimit.addEventListener('change', ()=> renderTable(filteredData));
-
-    // debounce helper
-    function debounce(fn, wait=200){
-      let t;
-      return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); };
-    }
-
-    // selection render at startup
-    renderSelections();
-
-    // initial load
-    (async function init(){
-      // fetch main CSV
-      rawData = await fetchCsv(MAIN_CSV_URL);
-      if (!rawData.length){
-        tableBody.innerHTML = '<tr><td colspan="12" class="muted" style="padding:22px;text-align:center">Failed to load CSV — check the URL or CORS</td></tr>';
-        return;
-      }
-
-      // attach dates
-      populateDateFilter(rawData);
-
-      // enrich & render
-      applyFilters();
-
-      // load back csv for duplicate checking
-      await loadBackCsv();
-    })();
-
-    // helper: compute selection presence
-    function isRowSelected(row){
-      const k = selectionKeyForRow(row);
-      return selections.some(s => selectionKeyForRow(s) === k);
-    }
-
-    // scroll-to-top (floating button)
-    const scrollBtn = document.createElement('button');
-    scrollBtn.className = 'floating-back';
-    scrollBtn.style.right = '88px';
-    scrollBtn.style.bottom = '22px';
-    scrollBtn.innerHTML = '<a class="" style="width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:rgba(17,17,17,0.08);color:var(--jet);box-shadow:0 8px 20px rgba(17,17,17,0.06)"><i class="fa-solid fa-arrow-up"></i></a>';
-    scrollBtn.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
-    document.body.appendChild(scrollBtn);
-
-    // helper: when app is long, clicking "Select" may add duplicate till we re-render; make sure toggleSelect uses selectionKeyForRow
-    // final note: This page requires the CSV to be accessible via public URL without CORS restrictions.
-  </script>
-</body>
-</html>
+        {/* Footer */}
+        <footer className="mt-8 text-center text-sm text-gray-500">Built with ❤️ · FTP.NET</footer>
+      </div>
+    </div>
+  );
+}
